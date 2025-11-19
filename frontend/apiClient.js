@@ -16,8 +16,8 @@ export const predictFull = async (features) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Prediction error:', error);
-    throw error;
+    console.error('Prediction error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to get prediction');
   }
 };
 
@@ -28,8 +28,8 @@ export const predictTop10 = async (features) => {
     });
     return response.data;
   } catch (error) {
-    console.error('Prediction error:', error);
-    throw error;
+    console.error('Prediction error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to get prediction');
   }
 };
 
@@ -38,8 +38,8 @@ export const healthCheck = async () => {
     const response = await api.get('/health');
     return response.data;
   } catch (error) {
-    console.error('Health check error:', error);
-    throw error;
+    console.error('Health check error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.detail || error.message || 'Health check failed');
   }
 };
 

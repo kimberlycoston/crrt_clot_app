@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { predictFull } from './apiClient'
+import { predictFull } from './apiClient.js'
 import { HYPOTHETICAL_PATIENTS } from './patients.js'
 import RiskGauge from './riskgauge.jsx'
 

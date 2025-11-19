@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { predictTop10 } from './apiClient'
+import { predictTop10 } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
 
 const TOP10_FEATURES = [
