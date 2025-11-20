@@ -1,22 +1,22 @@
 import React, { useState } from 'react'
 import { predictFull } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
+import { Sparkles, RotateCcw, Activity, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 
-// Default values for the 47 non-top-10 features (reasonable medians/means from CRRT data)
+// ... (keep the DEFAULT_VALUES as in original file)
 const DEFAULT_VALUES = {
-  // Top 10 features - start empty (user must fill)
-  blood_flow: '',
-  citrate: '',
-  heparin_dose: '',
-  phosphate: '',
-  fibrinogen: '',
-  effluent_pressure: '',
-  filter_pressure: '',
-  prefilter_replacement_rate: '',
-  creatinine: '',
-  replacement_rate: '',
-  
-  // CRRT Machine Parameters (pre-filled with typical values)
+  // Top 10 Most Important - Pre-filled with typical ICU values (user can edit)
+  blood_flow: 200,
+  citrate: 200,
+  heparin_dose: 800,
+  phosphate: 3.5,
+  fibrinogen: 350,
+  effluent_pressure: 75,
+  filter_pressure: 125,
+  prefilter_replacement_rate: 500,
+  creatinine: 2.5,
+  replacement_rate: 700,
+  // Other parameters - Pre-filled with typical ICU values
   access_pressure: -100,
   current_goal: 25,
   dialysate_rate: 1500,
@@ -24,20 +24,14 @@ const DEFAULT_VALUES = {
   postfilter_replacement_rate: 200,
   return_pressure: 120,
   ultrafiltrate_output: 1400,
-  
-  // Hematology (pre-filled with typical ICU values)
   hematocrit: 28,
   hemoglobin: 9.5,
   platelet: 150,
   rbc: 3.0,
   wbc: 12.0,
-  
-  // Coagulation (pre-filled with typical values)
   inr: 1.3,
   pt: 14.5,
   ptt: 38,
-  
-  // Chemistry (pre-filled with typical ICU values)
   aniongap: 14,
   bicarbonate: 21,
   bun: 45,
@@ -51,22 +45,18 @@ const DEFAULT_VALUES = {
   pco2: 38,
   magnesium: 2.0,
   ldh: 250,
-  
-  // Temporal features (pre-filled)
   high_pressure: 0,
   hour_of_day: 12,
   day_of_week: 3,
   is_weekend: 0,
   is_night_shift: 0,
-  
-  // Change features (pre-filled with typical changes)
   platelet_change: -10,
   ptt_change: 3,
   creatinine_change: 0.2,
   hematocrit_change: -1
 }
 
-// Feature groups for better organization
+// ... (keep the FEATURE_GROUPS as in original file)
 const FEATURE_GROUPS = {
   'Top 10 Most Important (Required)': [
     { key: 'blood_flow', label: 'Blood Flow (mL/min)', min: 50, max: 300 },
@@ -136,6 +126,7 @@ function Full57InputPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [collapsedGroups, setCollapsedGroups] = useState({})
 
   const handleInputChange = (key, value) => {
     setFeatures(prev => ({
@@ -147,7 +138,6 @@ function Full57InputPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Validate top 10 features are filled
     const top10Keys = FEATURE_GROUPS['Top 10 Most Important (Required)'].map(f => f.key)
     const missingTop10 = top10Keys.filter(key => features[key] === '' || features[key] === null)
     
@@ -175,117 +165,213 @@ function Full57InputPage() {
     setError(null)
   }
 
+  const toggleGroup = (groupName) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }))
+  }
+
   return (
     <div className="px-4 py-6">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Full Model - All 57 Features
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Top 10 features are required. Other features are pre-filled with typical ICU values but can be adjusted.
-        </p>
+        {/* Page Header */}
+        <div className="mb-8 text-center animate-slide-in">
+          {/* <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-4">
+            <Activity className="w-4 h-4" />
+            <span>Comprehensive Assessment Mode</span>
+          </div> */}
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">
+            Full Model - All 57 Features
+          </h2>
+          <p className="text-gray-600 max-w-3xl mx-auto">
+            Complete clinical assessment using all available parameters. Top 10 features are <strong>required</strong>, 
+            while others are pre-filled with typical ICU values and can be adjusted as needed.
+          </p>
+        </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Input Form - Takes up 2 columns */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {Object.entries(FEATURE_GROUPS).map(([groupName, groupFeatures]) => (
-                <div key={groupName} className="border-b pb-4">
-                  <h3 className={`text-lg font-semibold mb-3 ${
-                    groupName.includes('Top 10') ? 'text-red-600' : 'text-gray-700'
-                  }`}>
-                    {groupName}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {groupFeatures.map(({ key, label, min, max, step }) => (
-                      <div key={key}>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {label}
-                          {groupName.includes('Top 10') && (
-                            <span className="text-red-500 ml-1">*</span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          step={step || 0.1}
-                          min={min}
-                          max={max}
-                          value={features[key]}
-                          onChange={(e) => handleInputChange(key, e.target.value)}
-                          className={`input-field ${
-                            groupName.includes('Top 10') && features[key] === '' 
-                              ? 'border-red-300 bg-red-50' 
-                              : ''
-                          }`}
-                          required={groupName.includes('Top 10')}
-                          placeholder={groupName.includes('Top 10') ? 'Required' : ''}
-                        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Input Form */}
+          <div className="lg:col-span-2 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {Object.entries(FEATURE_GROUPS).map(([groupName, groupFeatures]) => {
+                const isRequired = groupName.includes('Top 10')
+                const isCollapsed = collapsedGroups[groupName]
+                
+                return (
+                  <div 
+                    key={groupName} 
+                    className={`card hover-lift animate-slide-in-right ${
+                      isRequired ? 'feature-group-required' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(groupName)}
+                      className="w-full flex items-center justify-between mb-4 focus:outline-none group"
+                    >
+                      <h3 className={`text-lg font-semibold flex items-center space-x-2 ${
+                        isRequired ? 'text-blue-700' : 'text-gray-800'
+                      }`}>
+                        {isRequired && <AlertCircle className="w-5 h-5 text-red-500" />}
+                        <span>{groupName}</span>
+                        {/* <span className={` ${
+                          isRequired ? 'badge-danger' : 'badge-info'
+                        }`}> */}
+                          {/* {groupFeatures.length} fields */}
+                        {/* </span> */}
+                      </h3>
+                      {isCollapsed ? 
+                        <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" /> :
+                        <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                      }
+                    </button>
+                    
+                    {!isCollapsed && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-in">
+                        {groupFeatures.map(({ key, label, min, max, step }) => (
+                          <div key={key}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                              {label}
+                              {isRequired && (
+                                <span className="text-red-500 ml-1 text-base">*</span>
+                              )}
+                            </label>
+                            <input
+                              type="number"
+                              step={step || 0.1}
+                              min={min}
+                              max={max}
+                              value={features[key]}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
+                              className={`input-field ${
+                                isRequired && features[key] === '' 
+                                  ? 'border-red-300 bg-red-50 focus:ring-red-500 focus:border-red-500' 
+                                  : ''
+                              }`}
+                              required={isRequired}
+                              placeholder={isRequired ? 'Required' : 'Optional'}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
               
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary flex-1"
-                >
-                  {loading ? 'Predicting...' : 'Get Prediction'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="btn-secondary"
-                >
-                  Reset
-                </button>
+              <div className="card">
+                <div className="flex gap-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary flex-1 flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        <span>Calculate Risk</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="btn-secondary flex items-center space-x-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Reset</span>
+                  </button>
+                </div>
               </div>
             </form>
 
             {error && (
-              <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
+              <div className="card bg-red-50 border-red-200 animate-slide-in">
+                <div className="flex">
+                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-red-800">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Results - Takes up 1 column */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-xl font-semibold mb-4">Prediction Results</h3>
-            
-            {result ? (
-              <div className="space-y-4">
-                <RiskGauge 
-                  percentage={result.percentage}
-                  riskLevel={result.risk_level}
-                />
-                
-                <div className="mt-6">
-                  <h4 className="font-semibold mb-2">Top 10 Contributors:</h4>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {Object.entries(result.top_contributors || {})
-                      .map(([feature, value]) => (
-                        <div key={feature} className="flex justify-between text-sm py-1 border-b border-gray-100">
-                          <span className="text-gray-700">
-                            {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                          <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                            {value > 0 ? '+' : ''}{value.toFixed(4)}
-                          </span>
-                        </div>
-                      ))}
+          {/* Results Panel */}
+          <div className="lg:col-span-1">
+            <div className="results-panel">
+              <div className="card animate-slide-in">
+                <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-white" />
                   </div>
-                </div>
+                  <span>Risk Assessment</span>
+                </h3>
+                
+                {result ? (
+                  <div className="space-y-6">
+                    <RiskGauge 
+                      percentage={result.percentage}
+                      riskLevel={result.risk_level}
+                    />
+                    
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-semibold mb-4 flex items-center space-x-2">
+                        <span>Top Contributors</span>
+                        {/* <span className="badge badge-info text-xs">SHAP</span> */}
+                      </h4>
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                        {Object.entries(result.top_contributors || {})
+                          .map(([feature, value]) => {
+                            const absValue = Math.abs(value)
+                            const maxAbs = Math.max(...Object.values(result.top_contributors).map(Math.abs))
+                            const widthPercent = (absValue / maxAbs) * 100
+                            
+                            return (
+                              <div key={feature}>
+                                <div className="flex justify-between text-sm mb-1.5">
+                                  <span className="font-medium text-gray-700 text-xs">
+                                    {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </span>
+                                  <span className={`font-semibold text-xs ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    {value > 0 ? '+' : ''}{value.toFixed(4)}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      value > 0 
+                                        ? 'bg-gradient-to-r from-red-400 to-red-600' 
+                                        : 'bg-gradient-to-r from-green-400 to-green-600'
+                                    }`}
+                                    style={{ width: `${widthPercent}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow">
+                      <Activity className="w-10 h-10 text-blue-600" />
+                    </div>
+                    <p className="text-gray-500 mb-2 font-medium">Ready for Full Assessment</p>
+                    <p className="text-sm text-gray-400 max-w-xs mx-auto">
+                      Fill in the required Top 10 features and click "Calculate Risk"
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-gray-500 text-center py-12">
-                <p className="mb-2">Fill in the required fields</p>
-                <p className="text-sm">(Top 10 features marked with *)</p>
-                <p className="text-sm mt-4">Other fields are pre-filled with typical ICU values but can be adjusted</p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

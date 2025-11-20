@@ -59,11 +59,11 @@ function Full57Page() {
                     {key === 'veryHigh' ? 'Very High Risk' : key.replace(/([A-Z])/g, ' $1').trim()}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
+                    {key === 'bleeding' && 'Over-anticoagulated'}
                     {key === 'low' && 'Stable patient'}
                     {key === 'moderate' && 'Mild inflammation'}
                     {key === 'high' && 'Rising pressures'}
                     {key === 'veryHigh' && 'Critical state'}
-                    {key === 'bleeding' && 'Over-anticoagulated'}
                   </div>
                 </button>
               ))}
@@ -104,7 +104,7 @@ function Full57Page() {
                           <span className="text-gray-700">
                             {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
-                          <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                          <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             {value > 0 ? '+' : ''}{value.toFixed(4)}
                           </span>
                         </div>

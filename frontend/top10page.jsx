@@ -1,18 +1,20 @@
 import React, { useState } from 'react'
 import { predictTop10 } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
+import ShapBidirectionalChart from './ShapBidirectionalChart.jsx'
+import { Sparkles, RotateCcw, Activity, Info } from 'lucide-react'
 
 const TOP10_FEATURES = [
-  'blood_flow',
-  'citrate',
-  'heparin_dose',
-  'phosphate',
-  'fibrinogen',
-  'effluent_pressure',
-  'filter_pressure',
-  'prefilter_replacement_rate',
-  'creatinine',
-  'replacement_rate'
+  { key: 'blood_flow', label: 'Blood Flow (mL/min)', unit: 'mL/min', min: 50, max: 300, info: 'Rate of blood flow through the circuit' },
+  { key: 'citrate', label: 'Citrate (mEq/hr)', unit: 'mEq/hr', min: 0, max: 300, info: 'Anticoagulation rate' },
+  { key: 'heparin_dose', label: 'Heparin Dose (units/hr)', unit: 'units/hr', min: 0, max: 2000, info: 'Systemic anticoagulation' },
+  { key: 'phosphate', label: 'Phosphate (mg/dL)', unit: 'mg/dL', min: 1, max: 8, info: 'Serum phosphate level' },
+  { key: 'fibrinogen', label: 'Fibrinogen (mg/dL)', unit: 'mg/dL', min: 100, max: 800, info: 'Coagulation factor' },
+  { key: 'effluent_pressure', label: 'Effluent Pressure (mmHg)', unit: 'mmHg', min: 0, max: 200, info: 'Outlet pressure' },
+  { key: 'filter_pressure', label: 'Filter Pressure (mmHg)', unit: 'mmHg', min: 50, max: 300, info: 'Transmembrane pressure' },
+  { key: 'prefilter_replacement_rate', label: 'Prefilter Replacement (mL/hr)', unit: 'mL/hr', min: 0, max: 1500, info: 'Pre-dilution rate' },
+  { key: 'creatinine', label: 'Creatinine (mg/dL)', unit: 'mg/dL', min: 0.5, max: 8, info: 'Renal function marker' },
+  { key: 'replacement_rate', label: 'Replacement Rate (mL/hr)', unit: 'mL/hr', min: 0, max: 2000, info: 'Total replacement fluid' }
 ]
 
 const DEFAULT_VALUES = {
@@ -63,97 +65,197 @@ function Top10Page() {
   }
 
   return (
-    <div className="px-4 py-6">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-3xl font-bold text-gray-900 mb-6">
-          Quick Input - Top 10 Features
-        </h2>
+    <>
+      <style>{`
+        .tooltip-container:hover .tooltip {
+          opacity: 1;
+        }
+      `}</style>
+      <div className="px-4 py-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="mb-8 text-center animate-slide-in">
+          {/* <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-4">
+            <Sparkles className="w-4 h-4" />
+            <span>Quick Assessment Mode</span>
+          </div> */}
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">
+            Primary Risk Indicators
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+          Quick evaluation of circuit clotting risk based on key treatment parameters.
+          </p>
+        </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Row: Patient Parameters and Risk Assessment */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           {/* Input Form */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-xl font-semibold mb-4">Enter Patient Data</h3>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {TOP10_FEATURES.map(feature => (
-                <div key={feature}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={features[feature]}
-                    onChange={(e) => handleInputChange(feature, e.target.value)}
-                    className="input-field"
-                    required
-                  />
-                </div>
-              ))}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="card hover-lift animate-slide-in-right">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-gray-900 flex items-center space-x-2">
+                  <Activity className="w-6 h-6 text-blue-600" />
+                  <span>Patient Parameters</span>
+                </h3>
+                {/* <span className="badge badge-info">10 inputs</span> */}
+              </div>
               
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary flex-1"
-                >
-                  {loading ? 'Predicting...' : 'Get Prediction'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="btn-secondary"
-                >
-                  Reset
-                </button>
-              </div>
-            </form>
-
-            {error && (
-              <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Results */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-xl font-semibold mb-4">Prediction Results</h3>
-            
-            {result ? (
-              <div className="space-y-4">
-                <RiskGauge 
-                  percentage={result.percentage}
-                  riskLevel={result.risk_level}
-                />
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {TOP10_FEATURES.map(({ key, label, unit, min, max, info }) => (
+                    <div key={key}>
+                      <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span className="flex items-center space-x-1">
+                          <span>{label}</span>
+                          <div className="relative inline-block tooltip-container">
+                            <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
+                            {/* Tooltip */}
+                            <div className="tooltip absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10 pointer-events-none opacity-0 transition-opacity duration-200">
+                              {info}
+                              <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        </span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          {unit}
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min={min}
+                          max={max}
+                          value={features[key]}
+                          onChange={(e) => handleInputChange(key, e.target.value)}
+                          className="input-field"
+                          required
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
-                <div className="mt-6">
-                  <h4 className="font-semibold mb-2">Top Contributors:</h4>
-                  <div className="space-y-2">
-                    {Object.entries(result.top_contributors || {})
-                      .slice(0, 5)
-                      .map(([feature, value]) => (
-                        <div key={feature} className="flex justify-between text-sm">
-                          <span>{feature.replace(/_/g, ' ')}</span>
-                          <span className={value > 0 ? 'text-red-600' : 'text-blue-600'}>
-                            {value > 0 ? '+' : ''}{value.toFixed(4)}
-                          </span>
-                        </div>
-                      ))}
+                <div className="flex gap-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary flex-1 flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        <span>Calculate Risk</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="btn-secondary flex items-center space-x-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </form>
+
+              {error && (
+                <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-slide-in">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700 font-medium">{error}</p>
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Results Panel */}
+          <div className="lg:col-span-1">
+            <div className="results-panel">
+              <div className="card animate-slide-in">
+                <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-white" />
+                  </div>
+                  <span>Risk Assessment</span>
+                </h3>
+                
+                {result ? (
+                  <div className="space-y-6">
+                    <RiskGauge 
+                      percentage={result.percentage}
+                      riskLevel={result.risk_level}
+                    />
+                    
+                    {/* LLM Output Section - Placeholder for future feature */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-lg mb-4 text-center">
+                        Clinical Interpretation
+                      </h4>
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-sm text-gray-500 text-center italic">
+                          AI-generated clinical interpretation will appear here
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow">
+                      <Activity className="w-10 h-10 text-blue-600" />
+                    </div>
+                    <p className="text-gray-500 mb-2 font-medium">Ready for Assessment</p>
+                    <p className="text-sm text-gray-400 max-w-xs mx-auto">
+                      Enter patient parameters and click "Calculate Risk" to see the prediction
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-gray-500 text-center py-12">
-                Enter patient data and click "Get Prediction" to see results
-              </div>
-            )}
+            </div>
           </div>
         </div>
+
+        {/* Bottom Row: Key Risk Factors - Full Width */}
+        {result && (
+          <div className="card animate-slide-in">
+            <h4 className="font-bold text-2xl mb-2 flex items-center justify-center space-x-2">
+              <span>Key Risk Factors</span>
+              {/* <span className="badge badge-info text-xs">SHAP Values</span> */}
+            </h4>
+            {/* <p className="text-sm text-gray-600 text-center mb-6 max-w-2xl mx-auto">
+              Individual patient factors contributing to this risk score. Values show the strength and direction of each factor's influence on the prediction.
+            </p> */}
+            <div className="max-w-4xl mx-auto">
+              <ShapBidirectionalChart 
+                shapValues={result.top_contributors || {}}
+                maxDisplay={10}
+              />
+            </div>
+            <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg text-xs text-gray-700 border border-blue-100 max-w-2xl mx-auto">
+              <p className="font-semibold mb-1">Understanding SHAP Values</p>
+              <p><strong>SHAP values</strong> show how much each feature pushes the prediction away from the baseline. 
+              Features extending <span className="text-red-600 font-semibold">right (red)</span> increase clot risk, 
+              while features extending <span className="text-green-600 font-semibold">left (green)</span> decrease it.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+    </>
   )
 }
 
 export default Top10Page
-
