@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { predictTop10 } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
 import ShapBidirectionalChart from './ShapBidirectionalChart.jsx'
-import { Sparkles, RotateCcw, Activity, Info } from 'lucide-react'
+import { generateClinicalRecommendations } from './llmService.js'
+import { Sparkles, RotateCcw, Activity, Info, Brain, Loader2 } from 'lucide-react'
 
 const TOP10_FEATURES = [
   { key: 'blood_flow', label: 'Blood Flow (mL/min)', unit: 'mL/min', min: 50, max: 300, info: 'Rate of blood flow through the circuit' },
@@ -35,6 +36,8 @@ function Top10Page() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [recommendations, setRecommendations] = useState(null)
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
 
   const handleInputChange = (feature, value) => {
     setFeatures(prev => ({
@@ -47,10 +50,25 @@ function Top10Page() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setRecommendations(null)
     
     try {
+      // Get prediction from backend
       const response = await predictTop10(features)
       setResult(response)
+      
+      // Generate LLM recommendations
+      setLoadingRecommendations(true)
+      try {
+        const llmResponse = await generateClinicalRecommendations(response, features)
+        setRecommendations(llmResponse)
+      } catch (llmError) {
+        console.error("LLM recommendation error:", llmError)
+        setRecommendations("Unable to generate recommendations at this time.")
+      } finally {
+        setLoadingRecommendations(false)
+      }
+      
     } catch (err) {
       setError(err.message || 'Failed to get prediction')
     } finally {
@@ -62,6 +80,7 @@ function Top10Page() {
     setFeatures(DEFAULT_VALUES)
     setResult(null)
     setError(null)
+    setRecommendations(null)
   }
 
   return (
@@ -75,10 +94,6 @@ function Top10Page() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8 text-center animate-slide-in">
-          {/* <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-4">
-            <Sparkles className="w-4 h-4" />
-            <span>Quick Assessment Mode</span>
-          </div> */}
           <h2 className="text-4xl font-bold text-gray-900 mb-3">
             Primary Risk Indicators
           </h2>
@@ -97,7 +112,6 @@ function Top10Page() {
                   <Activity className="w-6 h-6 text-blue-600" />
                   <span>Patient Parameters</span>
                 </h3>
-                {/* <span className="badge badge-info">10 inputs</span> */}
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -109,7 +123,6 @@ function Top10Page() {
                           <span>{label}</span>
                           <div className="relative inline-block tooltip-container">
                             <Info className="w-3.5 h-3.5 text-gray-400 cursor-help" />
-                            {/* Tooltip */}
                             <div className="tooltip absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10 pointer-events-none opacity-0 transition-opacity duration-200">
                               {info}
                               <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
@@ -200,16 +213,41 @@ function Top10Page() {
                       riskLevel={result.risk_level}
                     />
                     
-                    {/* LLM Output Section - Placeholder for future feature */}
+                    {/* LLM Clinical Interpretation */}
                     <div className="border-t border-gray-200 pt-6">
-                      <h4 className="font-bold text-lg mb-4 text-center">
-                        Clinical Interpretation
+                      <h4 className="font-bold text-lg mb-4 flex items-center justify-center space-x-2">
+                        <Brain className="w-5 h-5 text-purple-600" />
+                        <span>Clinical Interpretation</span>
                       </h4>
-                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-sm text-gray-500 text-center italic">
-                          AI-generated clinical interpretation will appear here
-                        </p>
-                      </div>
+                      
+                      {loadingRecommendations ? (
+                        <div className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                          <div className="flex items-center justify-center space-x-3">
+                            <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                            <span className="text-sm text-purple-700 font-medium">
+                              Generating recommendations...
+                            </span>
+                          </div>
+                        </div>
+                      ) : recommendations ? (
+                        <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                          <p className="text-sm text-gray-800 leading-relaxed">
+                            {recommendations}
+                          </p>
+                          <div className="mt-3 pt-3 border-t border-purple-200">
+                            <p className="text-xs text-purple-600 italic flex items-center space-x-1">
+                              <Brain className="w-3 h-3" />
+                              <span>AI-generated clinical guidance</span>
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-500 text-center italic">
+                            Recommendations will appear here
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -233,11 +271,7 @@ function Top10Page() {
           <div className="card animate-slide-in">
             <h4 className="font-bold text-2xl mb-2 flex items-center justify-center space-x-2">
               <span>Key Risk Factors</span>
-              {/* <span className="badge badge-info text-xs">SHAP Values</span> */}
             </h4>
-            {/* <p className="text-sm text-gray-600 text-center mb-6 max-w-2xl mx-auto">
-              Individual patient factors contributing to this risk score. Values show the strength and direction of each factor's influence on the prediction.
-            </p> */}
             <div className="max-w-4xl mx-auto">
               <ShapBidirectionalChart 
                 shapValues={result.top_contributors || {}}
