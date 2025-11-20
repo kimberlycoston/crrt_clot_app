@@ -1,11 +1,10 @@
 /**
- * LLM Service for generating clinical recommendations
- * Supports both Claude.ai (no API key) and production (with API key)
+ * LLM Service for generating clinical recommendations using OpenAI
  */
 
 // Configuration: Check if running in production with API key
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || null;
-const IS_PRODUCTION = !!ANTHROPIC_API_KEY;
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || null;
+const IS_PRODUCTION = !!OPENAI_API_KEY;
 
 /**
  * Generate clinical recommendations based on prediction results
@@ -20,51 +19,53 @@ export async function generateClinicalRecommendations(predictionResult, features
   const prompt = buildClinicalPrompt(percentage, risk_level, top_contributors, features);
   
   try {
-    // Build headers - include API key if in production
-    const headers = {
-      "Content-Type": "application/json",
-    };
-    
-    // Add API key header if running in production
-    if (IS_PRODUCTION) {
-      headers["x-api-key"] = ANTHROPIC_API_KEY;
-      headers["anthropic-version"] = "2023-06-01";
+    // Check if API key is available
+    if (!OPENAI_API_KEY) {
+      throw new Error("OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.");
     }
-    
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: headers,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 800,
+        model: "gpt-4o-mini", // or "gpt-4o" for better quality
         messages: [
-          { role: "user", content: prompt }
-        ]
+          {
+            role: "system",
+            content: "You are a nephrology critical care assistant providing evidence-based guidance for CRRT management. Provide concise, actionable clinical recommendations."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("API Error:", errorData);
+      console.error("OpenAI API Error:", errorData);
       
       if (response.status === 401) {
-        throw new Error("API authentication failed. Please check your API key.");
+        throw new Error("Invalid OpenAI API key. Please check your .env file.");
       }
-      throw new Error(`API request failed: ${response.status}`);
+      if (response.status === 429) {
+        throw new Error("OpenAI API rate limit exceeded. Please try again later.");
+      }
+      throw new Error(`OpenAI API request failed: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.content[0].text;
+    return data.choices[0].message.content;
     
   } catch (error) {
     console.error("Error generating recommendations:", error);
-    
-    // Provide helpful error messages
-    if (error.message.includes("authentication")) {
-      throw new Error("API key is invalid or missing. Check your .env file.");
-    }
-    
-    throw new Error("Failed to generate clinical recommendations");
+    throw new Error(error.message || "Failed to generate clinical recommendations");
   }
 }
 
@@ -102,9 +103,7 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
     )
     .join('\n');
 
-  return `You are a nephrology critical care assistant providing evidence-based guidance for CRRT (Continuous Renal Replacement Therapy) management.
-
-PATIENT RISK ASSESSMENT:
+  return `PATIENT RISK ASSESSMENT:
 - Clot Formation Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()} RISK)
 
 KEY FACTORS INCREASING CLOT RISK:
@@ -155,17 +154,12 @@ function formatFeatureName(feature) {
  * Check if API is properly configured
  */
 export function checkApiConfiguration() {
-  if (IS_PRODUCTION && !ANTHROPIC_API_KEY) {
-    console.warn("⚠️ Running in production mode but no API key found!");
-    console.warn("Please set VITE_ANTHROPIC_API_KEY in your .env file");
+  if (!OPENAI_API_KEY) {
+    console.warn("⚠️ OpenAI API key not found!");
+    console.warn("Please set VITE_OPENAI_API_KEY in your .env file");
     return false;
   }
   
-  if (IS_PRODUCTION) {
-    console.log("✅ API key configured for production use");
-  } else {
-    console.log("ℹ️ Running in Claude.ai mode (no API key needed)");
-  }
-  
+  console.log("✅ OpenAI API key configured");
   return true;
 }

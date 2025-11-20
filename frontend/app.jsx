@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import Top10Page from './top10page'
 import Full57Page from './full57page'
 import Full57InputPage from './full57inputpage'
-import { Activity } from 'lucide-react'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('top10')
@@ -15,9 +14,7 @@ function App() {
           <div className="flex justify-between items-center h-20">
             {/* Logo and Title */}
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Activity className="w-7 h-7 text-white" />
-              </div>
+              <img src="/crrt_icon.png" alt="CRRT Icon" className="w-12 h-12 object-contain" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
                   CRRT Clot Risk <span className="gradient-text">Prediction</span>

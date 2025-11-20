@@ -15,9 +15,9 @@
   -moz-osx-font-smoothing: grayscale;
   
   /* Medical-grade color palette */
-  --color-primary: #3b82f6;
-  --color-primary-dark: #2563eb;
-  --color-primary-light: #60a5fa;
+  --color-primary: #4f61ac;
+  --color-primary-dark: #3f4e8a;
+  --color-primary-light: #7787c7;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
@@ -90,14 +90,14 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: black;
   border-radius: 10px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--color-primary-dark) 0%, #1e40af 100%);
+  background: black 100%;
   background-clip: content-box;
 }
 
@@ -125,13 +125,13 @@ html {
            active:scale-95 transition-all duration-200 
            disabled:opacity-50 disabled:cursor-not-allowed
            relative overflow-hidden;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, #4f61ac 0%, #3f4e8a 100%);
+    box-shadow: 0 4px 14px rgba(79, 97, 172, 0.4);
   }
   
   .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+    background: linear-gradient(135deg, #3f4e8a 0%, #2f3b68 100%);
+    box-shadow: 0 6px 20px rgba(79, 97, 172, 0.5);
     transform: translateY(-2px);
   }
   
@@ -282,14 +282,14 @@ html {
 }
 
 /* Gradient text effect */
-.gradient-text {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+/* .gradient-text {
+  background: linear-gradient(135deg, #4f61ac 0%, #8b5cf6 50%, #ec4899 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
-}
+} */
 
 @keyframes gradient-shift {
   0%, 100% {
@@ -389,7 +389,7 @@ label {
   left: 0;
   width: 60px;
   height: 2px;
-  background: linear-gradient(90deg, #3b82f6, transparent);
+  background: linear-gradient(90deg, #4f61ac, transparent);
 }
 
 /* Feature group styling */
@@ -433,7 +433,7 @@ label {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: linear-gradient(90deg, #4f61ac, #3f4e8a);
   border-radius: 3px 3px 0 0;
 }
 
@@ -476,7 +476,7 @@ label {
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 3px solid #3b82f6;
+  outline: 3px solid #4f61ac;
   outline-offset: 2px;
   border-radius: 4px;
 }

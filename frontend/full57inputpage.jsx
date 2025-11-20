@@ -308,9 +308,7 @@ function Full57InputPage() {
             <div className="results-panel">
               <div className="card animate-slide-in">
                 <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-white" />
-                  </div>
+                  <img src="/crrt_icon.png" alt="CRRT Icon" className="w-8 h-8 object-contain" />
                   <span>Risk Assessment</span>
                 </h3>
                 
@@ -361,8 +359,8 @@ function Full57InputPage() {
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow">
-                      <Activity className="w-10 h-10 text-blue-600" />
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow" style={{ backgroundColor: 'transparent' }}>
+                    <img src="/crrt_icon.png" alt="CRRT Icon" className="w-20 h-20 object-contain" />
                     </div>
                     <p className="text-gray-500 mb-2 font-medium">Ready for Full Assessment</p>
                     <p className="text-sm text-gray-400 max-w-xs mx-auto">

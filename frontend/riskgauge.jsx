@@ -4,7 +4,7 @@ import GaugeChart from 'react-gauge-chart'
 function RiskGauge({ percentage, riskLevel }) {
   const getRiskColor = () => {
     if (riskLevel === 'low') return 'text-green-600'
-    if (riskLevel === 'moderate') return 'text-yellow-600'
+    if (riskLevel === 'moderate') return 'text-yellow-500'
     return 'text-red-600'
   }
 

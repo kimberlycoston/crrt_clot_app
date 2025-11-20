@@ -200,9 +200,7 @@ function Top10Page() {
             <div className="results-panel">
               <div className="card animate-slide-in">
                 <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-white" />
-                  </div>
+                  <img src="/crrt_icon.png" alt="CRRT Icon" className="w-8 h-8 object-contain" />
                   <span>Risk Assessment</span>
                 </h3>
                 
@@ -216,26 +214,26 @@ function Top10Page() {
                     {/* LLM Clinical Interpretation */}
                     <div className="border-t border-gray-200 pt-6">
                       <h4 className="font-bold text-lg mb-4 flex items-center justify-center space-x-2">
-                        <Brain className="w-5 h-5 text-purple-600" />
+                        <Brain className="w-5 h-5 text-blue-600" />
                         <span>Clinical Interpretation</span>
                       </h4>
                       
                       {loadingRecommendations ? (
-                        <div className="p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                        <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg border border-blue-200">
                           <div className="flex items-center justify-center space-x-3">
-                            <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
-                            <span className="text-sm text-purple-700 font-medium">
+                            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                            <span className="text-sm text-blue-700 font-medium">
                               Generating recommendations...
                             </span>
                           </div>
                         </div>
                       ) : recommendations ? (
-                        <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg border border-blue-200">
                           <p className="text-sm text-gray-800 leading-relaxed">
                             {recommendations}
                           </p>
-                          <div className="mt-3 pt-3 border-t border-purple-200">
-                            <p className="text-xs text-purple-600 italic flex items-center space-x-1">
+                          <div className="mt-3 pt-3 border-t border-blue-200">
+                            <p className="text-xs text-blue-600 italic flex items-center space-x-1">
                               <Brain className="w-3 h-3" />
                               <span>AI-generated clinical guidance</span>
                             </p>
@@ -278,7 +276,7 @@ function Top10Page() {
                 maxDisplay={10}
               />
             </div>
-            <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg text-xs text-gray-700 border border-blue-100 max-w-2xl mx-auto">
+            <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg text-xs text-gray-700 border border-blue-100 max-w-2xl mx-auto">
               <p className="font-semibold mb-1">Understanding SHAP Values</p>
               <p><strong>SHAP values</strong> show how much each feature pushes the prediction away from the baseline. 
               Features extending <span className="text-red-600 font-semibold">right (red)</span> increase clot risk, 
