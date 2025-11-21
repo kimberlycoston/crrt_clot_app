@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { predictTop10 } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
 import ShapBidirectionalChart from './ShapBidirectionalChart.jsx'
+import ClinicalRecommendations from './ClinicalRecommendations.jsx'
 import { generateClinicalRecommendations } from './llmService.js'
 import { Sparkles, RotateCcw, Activity, Info, Brain, Loader2 } from 'lucide-react'
 
@@ -64,7 +65,7 @@ function Top10Page() {
         setRecommendations(llmResponse)
       } catch (llmError) {
         console.error("LLM recommendation error:", llmError)
-        setRecommendations("Unable to generate recommendations at this time.")
+        setRecommendations(null)
       } finally {
         setLoadingRecommendations(false)
       }
@@ -228,12 +229,10 @@ function Top10Page() {
                           </div>
                         </div>
                       ) : recommendations ? (
-                        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm text-gray-800 leading-relaxed">
-                            {recommendations}
-                          </p>
+                        <div>
+                          <ClinicalRecommendations recommendations={recommendations} />
                           <div className="mt-3 pt-3 border-t border-blue-200">
-                            <p className="text-xs text-blue-600 italic flex items-center space-x-1">
+                            <p className="text-xs text-blue-600 italic flex items-center justify-center space-x-1">
                               <Brain className="w-3 h-3" />
                               <span>AI-generated clinical guidance</span>
                             </p>

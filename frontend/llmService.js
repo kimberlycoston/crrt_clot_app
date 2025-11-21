@@ -10,7 +10,7 @@ const IS_PRODUCTION = !!OPENAI_API_KEY;
  * Generate clinical recommendations based on prediction results
  * @param {Object} predictionResult - The prediction result from the API
  * @param {Object} features - The input features used for prediction
- * @returns {Promise<string>} - Clinical recommendations text
+ * @returns {Promise<Object>} - Structured clinical recommendations
  */
 export async function generateClinicalRecommendations(predictionResult, features) {
   const { percentage, risk_level, top_contributors } = predictionResult;
@@ -31,11 +31,11 @@ export async function generateClinicalRecommendations(predictionResult, features
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini", // or "gpt-4o" for better quality
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are a nephrology critical care assistant providing evidence-based guidance for CRRT management. Provide concise, actionable clinical recommendations."
+            content: "You are a nephrology critical care assistant providing evidence-based guidance for CRRT management. Always respond with valid JSON only, no additional text."
           },
           {
             role: "user",
@@ -43,7 +43,8 @@ export async function generateClinicalRecommendations(predictionResult, features
           }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 800,
+        response_format: { type: "json_object" }
       })
     });
 
@@ -61,7 +62,15 @@ export async function generateClinicalRecommendations(predictionResult, features
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    const content = data.choices[0].message.content;
+    
+    // Parse the JSON response
+    try {
+      return JSON.parse(content);
+    } catch (parseError) {
+      console.error("Failed to parse LLM response:", content);
+      throw new Error("Invalid response format from AI");
+    }
     
   } catch (error) {
     console.error("Error generating recommendations:", error);
@@ -113,11 +122,9 @@ KEY FACTORS DECREASING CLOT RISK:
 ${decreasingFactorsText || 'None identified'}
 
 INSTRUCTIONS:
-1. Provide 3-4 concise, actionable recommendations focusing on MODIFIABLE parameters that are increasing clot risk
-2. Prioritize the factors with the highest SHAP values (greatest impact on prediction)
-3. Consider clinical safety - only suggest changes within safe ranges
-4. Be specific about direction of change (increase/decrease) and approximate targets when appropriate
-5. Use clear, professional medical language suitable for ICU clinicians
+Generate 3-4 concise, actionable recommendations focusing on MODIFIABLE parameters that are increasing clot risk.
+
+Prioritize factors with highest SHAP values. Consider clinical safety - only suggest changes within safe ranges.
 
 Focus on modifiable parameters such as:
 - Blood flow rate adjustments
@@ -127,7 +134,22 @@ Focus on modifiable parameters such as:
 
 Do NOT make recommendations about lab values or patient physiology that cannot be directly modified through CRRT settings.
 
-Format your response as a brief paragraph (3-5 sentences) with clear, prioritized recommendations. Be concise and actionable.`;
+REQUIRED JSON FORMAT - respond ONLY with valid JSON, no markdown, no other text:
+{
+  "summary": "One sentence overview of the clinical situation",
+  "recommendations": [
+    {
+      "priority": 1,
+      "parameter": "Filter Pressure",
+      "currentValue": "200 mmHg",
+      "recommendedAction": "Decrease to <150 mmHg",
+      "rationale": "Brief explanation of why this reduces clot risk",
+      "targetingFactor": "filter_pressure"
+    }
+  ]
+}
+
+Each recommendation must be specific, actionable, and include numeric targets when appropriate. Order by priority (1 = highest).`;
 }
 
 /**

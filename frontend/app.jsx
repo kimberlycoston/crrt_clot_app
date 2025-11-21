@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Top10Page from './top10page'
-import Full57Page from './full57page'
-import Full57InputPage from './full57inputpage'
+import DemoPage from './demopage'
+import FullModelPage from './fullmodelpage'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('top10')
@@ -113,8 +113,8 @@ function App() {
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="animate-slide-in">
           {currentPage === 'top10' && <Top10Page />}
-          {currentPage === 'demo' && <Full57Page />}
-          {currentPage === 'full57' && <Full57InputPage />}
+          {currentPage === 'demo' && <DemoPage />}
+          {currentPage === 'full57' && <FullModelPage />}
         </div>
       </main>
 

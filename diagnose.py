@@ -100,7 +100,7 @@ def main():
     check_file_exists("frontend/apiClient.js", "apiClient.js (correct API client)")
     check_file_exists("frontend/app.jsx", "app.jsx")
     check_file_exists("frontend/top10page.jsx", "top10page.jsx")
-    check_file_exists("frontend/full57page.jsx", "full57page.jsx")
+    check_file_exists("frontend/demopage.jsx", "demopage.jsx")
     
     # Check if node_modules exists
     print("\n📦 Frontend Dependencies:")
