@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { predictFull } from './apiClient.js'
 import RiskGauge from './riskgauge.jsx'
-import { Sparkles, RotateCcw, Activity, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import ClinicalRecommendations from './ClinicalRecommendations.jsx'
+import { generateClinicalRecommendations } from './llmService.js'
+import { Sparkles, RotateCcw, Activity, AlertCircle, ChevronDown, ChevronUp, Brain, Loader2 } from 'lucide-react'
 
 // ... (keep the DEFAULT_VALUES as in original file)
 const DEFAULT_VALUES = {
@@ -127,6 +129,8 @@ function FullModelPage() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [collapsedGroups, setCollapsedGroups] = useState({})
+  const [recommendations, setRecommendations] = useState(null)
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
 
   const handleInputChange = (key, value) => {
     setFeatures(prev => ({
@@ -148,10 +152,23 @@ function FullModelPage() {
     
     setLoading(true)
     setError(null)
+    setRecommendations(null)
     
     try {
       const response = await predictFull(features)
       setResult(response)
+      
+      // Generate LLM recommendations
+      setLoadingRecommendations(true)
+      try {
+        const llmResponse = await generateClinicalRecommendations(response, features)
+        setRecommendations(llmResponse)
+      } catch (llmError) {
+        console.error("LLM recommendation error:", llmError)
+        setRecommendations(null)
+      } finally {
+        setLoadingRecommendations(false)
+      }
     } catch (err) {
       setError(err.message || 'Failed to get prediction')
     } finally {
@@ -163,6 +180,7 @@ function FullModelPage() {
     setFeatures(DEFAULT_VALUES)
     setResult(null)
     setError(null)
+    setRecommendations(null)
   }
 
   const toggleGroup = (groupName) => {
@@ -177,10 +195,6 @@ function FullModelPage() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8 text-center animate-slide-in">
-          {/* <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-4">
-            <Activity className="w-4 h-4" />
-            <span>Comprehensive Assessment Mode</span>
-          </div> */}
           <h2 className="text-4xl font-bold text-gray-900 mb-3">
             Full Model - All 57 Features
           </h2>
@@ -215,11 +229,6 @@ function FullModelPage() {
                       }`}>
                         {isRequired && <AlertCircle className="w-5 h-5 text-red-500" />}
                         <span>{groupName}</span>
-                        {/* <span className={` ${
-                          isRequired ? 'badge-danger' : 'badge-info'
-                        }`}> */}
-                          {/* {groupFeatures.length} fields */}
-                        {/* </span> */}
                       </h3>
                       {isCollapsed ? 
                         <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" /> :
@@ -319,10 +328,44 @@ function FullModelPage() {
                       riskLevel={result.risk_level}
                     />
                     
+                    {/* LLM Clinical Interpretation */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-lg mb-4 flex items-center justify-center space-x-2">
+                        <Brain className="w-5 h-5 text-blue-600" />
+                        <span>Clinical Interpretation</span>
+                      </h4>
+                      
+                      {loadingRecommendations ? (
+                        <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-center space-x-3">
+                            <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                            <span className="text-sm text-blue-700 font-medium">
+                              Generating recommendations...
+                            </span>
+                          </div>
+                        </div>
+                      ) : recommendations ? (
+                        <div>
+                          <ClinicalRecommendations recommendations={recommendations} />
+                          <div className="mt-3 pt-3 border-t border-blue-200">
+                            <p className="text-xs text-blue-600 italic flex items-center justify-center space-x-1">
+                              <Brain className="w-3 h-3" />
+                              <span>AI-generated clinical guidance</span>
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-500 text-center italic">
+                            Recommendations will appear here
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="border-t border-gray-200 pt-6">
                       <h4 className="font-semibold mb-4 flex items-center space-x-2">
                         <span>Top Contributors</span>
-                        {/* <span className="badge badge-info text-xs">SHAP</span> */}
                       </h4>
                       <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                         {Object.entries(result.top_contributors || {})

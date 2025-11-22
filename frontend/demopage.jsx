@@ -2,17 +2,23 @@ import React, { useState } from 'react'
 import { predictFull } from './apiClient.js'
 import { HYPOTHETICAL_PATIENTS } from './patients.js'
 import RiskGauge from './riskgauge.jsx'
+import ClinicalRecommendations from './ClinicalRecommendations.jsx'
+import { generateClinicalRecommendations } from './llmService.js'
+import { Brain, Loader2 } from 'lucide-react'
 
 function DemoPage() {
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [recommendations, setRecommendations] = useState(null)
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
 
   const handlePatientSelect = (patientKey) => {
     setSelectedPatient(patientKey)
     setResult(null)
     setError(null)
+    setRecommendations(null)
   }
 
   const handlePredict = async () => {
@@ -20,11 +26,24 @@ function DemoPage() {
     
     setLoading(true)
     setError(null)
+    setRecommendations(null)
     
     try {
       const patientData = HYPOTHETICAL_PATIENTS[selectedPatient]
       const response = await predictFull(patientData)
       setResult(response)
+      
+      // Generate LLM recommendations
+      setLoadingRecommendations(true)
+      try {
+        const llmResponse = await generateClinicalRecommendations(response, patientData)
+        setRecommendations(llmResponse)
+      } catch (llmError) {
+        console.error("LLM recommendation error:", llmError)
+        setRecommendations(null)
+      } finally {
+        setLoadingRecommendations(false)
+      }
     } catch (err) {
       setError(err.message || 'Failed to get prediction')
     } finally {
@@ -95,6 +114,35 @@ function DemoPage() {
                   riskLevel={result.risk_level}
                 />
                 
+                {/* LLM Clinical Interpretation */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="font-bold text-lg mb-4 flex items-center justify-center space-x-2">
+                    <Brain className="w-5 h-5 text-blue-600" />
+                    <span>Clinical Interpretation</span>
+                  </h4>
+                  
+                  {loadingRecommendations ? (
+                    <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-center space-x-3">
+                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                        <span className="text-sm text-blue-700 font-medium">
+                          Generating recommendations...
+                        </span>
+                      </div>
+                    </div>
+                  ) : recommendations ? (
+                    <div>
+                      <ClinicalRecommendations recommendations={recommendations} />
+                      <div className="mt-3 pt-3 border-t border-blue-200">
+                        <p className="text-xs text-blue-600 italic flex items-center justify-center space-x-1">
+                          <Brain className="w-3 h-3" />
+                          <span>AI-generated clinical guidance</span>
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                
                 <div className="mt-6">
                   <h4 className="font-semibold mb-2">Top 10 Contributors:</h4>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -125,4 +173,3 @@ function DemoPage() {
 }
 
 export default DemoPage
-

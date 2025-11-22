@@ -112,8 +112,17 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
     )
     .join('\n');
 
+  // Assess anticoagulation status
+  const citrate = features.citrate || 0;
+  const heparin = features.heparin_dose || 0;
+  const ptt = features.ptt || 0;
+  const inr = features.inr || 0;
+  
+  const anticoagStatus = assessAnticoagulationStatus(citrate, heparin, ptt, inr);
+
   return `PATIENT RISK ASSESSMENT:
 - Clot Formation Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()} RISK)
+- Anticoagulation Status: ${anticoagStatus}
 
 KEY FACTORS INCREASING CLOT RISK:
 ${increasingFactorsText || 'None identified'}
@@ -121,36 +130,136 @@ ${increasingFactorsText || 'None identified'}
 KEY FACTORS DECREASING CLOT RISK:
 ${decreasingFactorsText || 'None identified'}
 
+CRITICAL CLINICAL CONSIDERATIONS:
+1. Risk Level Context:
+   - LOW risk (<25%): Use conservative interventions. Patient is already well-managed.
+   - MODERATE risk (25-50%): Standard interventions appropriate.
+   - HIGH risk (>50%): More aggressive interventions may be needed.
+
+2. Anticoagulation Balance:
+   - If PTT >45 or INR >1.5 or citrate >200 or heparin >1000: Patient may be OVER-ANTICOAGULATED
+   - NEVER recommend increasing anticoagulation if patient is already over-anticoagulated
+   - Consider DECREASING anticoagulation if bleeding risk indicators present
+   - Balance clot prevention with bleeding risk
+
+3. Pressure Management:
+   - High filter pressure (>200 mmHg) increases clot risk
+   - Low pressures may indicate over-anticoagulation or under-filtration
+   - Consider the clinical context
+
 INSTRUCTIONS:
-Generate 3-4 concise, actionable recommendations focusing on MODIFIABLE parameters that are increasing clot risk.
+Generate 2-4 clinically appropriate, actionable recommendations.
 
-Prioritize factors with highest SHAP values. Consider clinical safety - only suggest changes within safe ranges.
+FOR LOW RISK PATIENTS (<25%):
+- Acknowledge patient is well-managed
+- Suggest MAINTENANCE or minor optimizations only
+- Do NOT recommend aggressive interventions
+- Focus on monitoring and sustaining current good outcomes
 
-Focus on modifiable parameters such as:
+FOR MODERATE/HIGH RISK:
+- Focus on modifiable parameters with highest positive SHAP values
+- Prioritize safe, evidence-based interventions
+- Consider the anticoagulation status before recommending changes
+
+MODIFIABLE PARAMETERS:
 - Blood flow rate adjustments
-- Anticoagulation (citrate, heparin) optimization  
+- Anticoagulation (citrate, heparin) optimization - BUT RESPECT ANTICOAGULATION STATUS
 - Replacement/dialysate rate modifications
 - Filter pressure management
 
-Do NOT make recommendations about lab values or patient physiology that cannot be directly modified through CRRT settings.
+NEVER RECOMMEND:
+- Increasing anticoagulation if patient is over-anticoagulated
+- Changes to lab values that cannot be directly controlled (phosphate, fibrinogen, creatinine)
+- Aggressive interventions for LOW risk patients
 
-REQUIRED JSON FORMAT - respond ONLY with valid JSON, no markdown, no other text:
+REQUIRED JSON FORMAT - respond ONLY with valid JSON, no markdown:
 {
-  "summary": "One sentence overview of the clinical situation",
+  "summary": "One sentence clinical overview considering risk level and anticoagulation status",
   "recommendations": [
     {
       "priority": 1,
       "parameter": "Filter Pressure",
       "currentValue": "200 mmHg",
-      "recommendedAction": "Decrease to <150 mmHg",
-      "rationale": "Brief explanation of why this reduces clot risk",
+      "recommendedAction": "Monitor and maintain current levels",
+      "rationale": "Brief clinical explanation considering context",
       "targetingFactor": "filter_pressure"
     }
   ]
 }
 
-Each recommendation must be specific, actionable, and include numeric targets when appropriate. Order by priority (1 = highest).`;
+Each recommendation must be clinically appropriate given the risk level and anticoagulation status. For LOW risk patients, focus on maintenance rather than aggressive changes.`;
 }
+
+/**
+ * Assess anticoagulation status based on available parameters
+ */
+function assessAnticoagulationStatus(citrate, heparin, ptt, inr) {
+    // Determine which anticoagulation method is being used
+    const usingCitrate = citrate > 50; // Threshold for active citrate use
+    const usingHeparin = heparin > 100; // Threshold for active heparin use
+    
+    // Flag if both are being used (unusual/dangerous)
+    if (usingCitrate && usingHeparin) {
+      return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
+    }
+    
+    const issues = [];
+    
+    // Assess based on which method is being used
+    if (usingCitrate) {
+      // Citrate anticoagulation assessment
+      if (citrate > 250) {
+        issues.push(`Very high citrate (${citrate} mEq/hr)`);
+      } else if (citrate > 200) {
+        issues.push(`High citrate (${citrate} mEq/hr)`);
+      }
+      
+      // PTT/INR less relevant with citrate, but still check
+      if (ptt > 50) issues.push(`PTT elevated (${ptt}s)`);
+      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+      
+      if (issues.length >= 2) {
+        return `OVER-ANTICOAGULATED (Citrate) - ${issues.join(', ')}. BLEEDING RISK.`;
+      } else if (issues.length === 1) {
+        return `Possible over-anticoagulation (Citrate) - ${issues[0]}`;
+      } else if (citrate < 150) {
+        return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
+      } else {
+        return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
+      }
+    } else if (usingHeparin) {
+      // Heparin anticoagulation assessment
+      if (heparin > 1200) {
+        issues.push(`Very high heparin (${heparin} units/hr)`);
+      } else if (heparin > 1000) {
+        issues.push(`High heparin (${heparin} units/hr)`);
+      }
+      
+      // PTT is key for heparin monitoring
+      if (ptt > 80) {
+        issues.push(`PTT critically elevated (${ptt}s)`);
+      } else if (ptt > 60) {
+        issues.push(`PTT elevated (${ptt}s)`);
+      }
+      
+      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+      
+      if (issues.length >= 2) {
+        return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
+      } else if (issues.length === 1) {
+        return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
+      } else if (ptt < 30 && heparin < 500) {
+        return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
+      } else if (ptt >= 45 && ptt <= 60) {
+        return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
+      } else {
+        return `Heparin anticoagulation - monitor PTT (current: ${ptt}s)`;
+      }
+    } else {
+      // No anticoagulation or very minimal
+      return `Minimal/no anticoagulation detected (Citrate: ${citrate}, Heparin: ${heparin})`;
+    }
+  }
 
 /**
  * Format feature names for better readability
