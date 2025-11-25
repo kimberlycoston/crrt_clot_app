@@ -39,7 +39,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(predict.router)
-
+app.include_router(llm.router)
 
 @app.on_event("startup")
 async def startup_event():
