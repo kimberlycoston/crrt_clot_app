@@ -20,4 +20,4 @@ async def generate_text(data: LLMRequest):
         ]
     )
 
-    return {"response": response.choices[0].message["content"]}
+    return {"response": response.choices[0].message.content}
