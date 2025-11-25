@@ -30,6 +30,7 @@ app.add_middleware(
         "http://127.0.0.1:5174",
         "https://crrt-clot-app.vercel.app",
         "https://*.vercel.app",
+        "https://crrt-clot-h0qoz8sb4-kimberlycostons-projects.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
