@@ -103,9 +103,13 @@ Decreasing risk:
 ${decreasingFactorsText || 'None identified'}
 
 CLINICAL RULES:
-1. ONLY recommend changes to modifiable CRRT parameters and risk factors
-2. If anticoagulation status says "OVER-ANTICOAGULATED" or mentions bleeding risk, do NOT recommend increasing anticoagulation
-3. Match intervention intensity to risk level:
+1. Use your clinical judgment to determine the best course of action based on the patient's data
+2. ONLY recommend changes to modifiable CRRT parameters and risk factors
+3. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
+   - If patient is on citrate: adjust citrate dose, do not add heparin
+   - If patient is on heparin: adjust heparin dose based on PTT (target 45-60s), do not add citrate
+   - Switching anticoagulation (e.g., heparin → citrate) may be considered if current regimen is inadequate despite optimization (e.g., high clot risk despite very high heparin dosing)
+4. Match intervention intensity to risk level:
    - LOW (<30%): Maintenance only, acknowledge good control
    - MODERATE (30-60%): Targeted adjustments to top risk factors
    - HIGH (>60%): More aggressive but still safe interventions
