@@ -154,56 +154,56 @@ class ModelBundle:
         return prob, shap_dict
     
     def predict_full(self, features_dict: Dict[str, float]) -> Tuple[float, Dict[str, float]]:
-    """
-    Make prediction using full 57-feature model
-    
-    Args:
-        features_dict: Dictionary of all features
+        """
+        Make prediction using full 57-feature model
         
-    Returns:
-        Tuple of (probability, shap_values_dict)
-    """
-    # Store unscaled values for citrate and heparin_dose
-    unscaled_values = {
-        'citrate': features_dict.get('citrate', 0.0) or 0.0,
-        'heparin_dose': features_dict.get('heparin_dose', 0.0) or 0.0
-    }
-    
-    # Compute derived features
-    features_dict = compute_derived_features(features_dict)
-    
-    # Build DataFrame with only scaler features (exclude citrate and heparin_dose)
-    scaler_data = {f: features_dict.get(f, 0.0) for f in self.scaler_features}
-    df_for_scaling = pd.DataFrame([scaler_data], columns=self.scaler_features)
-    df_for_scaling = df_for_scaling.fillna(0)
-    
-    # Scale
-    scaled_array = self.scaler.transform(df_for_scaling)
-    scaled_dict = dict(zip(self.scaler_features, scaled_array[0]))
-    
-    # Build final input in FULL_FEATURES order
-    model_input = []
-    for feat in FULL_FEATURES:
-        if feat in ['citrate', 'heparin_dose']:
-            # Use unscaled value
-            model_input.append(unscaled_values[feat])
-        elif feat in scaled_dict:
-            # Use scaled value
-            model_input.append(scaled_dict[feat])
-        else:
-            # Derived feature or missing - get from features_dict
-            model_input.append(features_dict.get(feat, 0.0) or 0.0)
-    
-    model_input = np.array(model_input).reshape(1, -1)
-    
-    # Predict
-    prob = float(self.xgb_full.predict_proba(model_input)[0, 1])
-    
-    # Get SHAP values
-    shap_vals = self.shap_full.shap_values(model_input)[0]
-    shap_dict = dict(zip(FULL_FEATURES, shap_vals))
-    
-    return prob, shap_dict
+        Args:
+            features_dict: Dictionary of all features
+            
+        Returns:
+            Tuple of (probability, shap_values_dict)
+        """
+        # Store unscaled values for citrate and heparin_dose
+        unscaled_values = {
+            'citrate': features_dict.get('citrate', 0.0) or 0.0,
+            'heparin_dose': features_dict.get('heparin_dose', 0.0) or 0.0
+        }
+        
+        # Compute derived features
+        features_dict = compute_derived_features(features_dict)
+        
+        # Build DataFrame with only scaler features (exclude citrate and heparin_dose)
+        scaler_data = {f: features_dict.get(f, 0.0) for f in self.scaler_features}
+        df_for_scaling = pd.DataFrame([scaler_data], columns=self.scaler_features)
+        df_for_scaling = df_for_scaling.fillna(0)
+        
+        # Scale
+        scaled_array = self.scaler.transform(df_for_scaling)
+        scaled_dict = dict(zip(self.scaler_features, scaled_array[0]))
+        
+        # Build final input in FULL_FEATURES order
+        model_input = []
+        for feat in FULL_FEATURES:
+            if feat in ['citrate', 'heparin_dose']:
+                # Use unscaled value
+                model_input.append(unscaled_values[feat])
+            elif feat in scaled_dict:
+                # Use scaled value
+                model_input.append(scaled_dict[feat])
+            else:
+                # Derived feature or missing - get from features_dict
+                model_input.append(features_dict.get(feat, 0.0) or 0.0)
+        
+        model_input = np.array(model_input).reshape(1, -1)
+        
+        # Predict
+        prob = float(self.xgb_full.predict_proba(model_input)[0, 1])
+        
+        # Get SHAP values
+        shap_vals = self.shap_full.shap_values(model_input)[0]
+        shap_dict = dict(zip(FULL_FEATURES, shap_vals))
+        
+        return prob, shap_dict
     
     def predict_top10(self, features_dict: Dict[str, float]) -> Tuple[float, Dict[str, float]]:
         """
