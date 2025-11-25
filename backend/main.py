@@ -3,10 +3,9 @@ Main FastAPI application for CRRT Clot Prediction
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import predict
+from routes import predict, llm
 from schemas import HealthCheck
 from utils import get_model_bundle
-from routes import llm
 
 
 # Create FastAPI app
@@ -21,17 +20,7 @@ app = FastAPI(
 # CORS middleware - allow requests from frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "https://crrt-clot-app.vercel.app",
-        "https://*.vercel.app",
-        "https://crrt-clot-h0qoz8sb4-kimberlycostons-projects.vercel.app"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
