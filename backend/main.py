@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes import predict
 from schemas import HealthCheck
 from utils import get_model_bundle
+from routes import llm
+
 
 # Create FastAPI app
 app = FastAPI(

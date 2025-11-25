@@ -62,8 +62,6 @@ const DEFAULT_VALUES = {
 const FEATURE_GROUPS = {
   'Top 10 Most Important (Required)': [
     { key: 'blood_flow', label: 'Blood Flow (mL/min)', min: 50, max: 300 },
-    { key: 'citrate', label: 'Citrate (mEq/hr)', min: 0, max: 300 },
-    { key: 'heparin_dose', label: 'Heparin Dose (units/hr)', min: 0, max: 2000 },
     { key: 'phosphate', label: 'Phosphate (mg/dL)', min: 1, max: 8 },
     { key: 'fibrinogen', label: 'Fibrinogen (mg/dL)', min: 100, max: 800 },
     { key: 'effluent_pressure', label: 'Effluent Pressure (mmHg)', min: 0, max: 200 },
@@ -94,19 +92,19 @@ const FEATURE_GROUPS = {
     { key: 'ptt', label: 'PTT (seconds)', min: 20, max: 100 }
   ],
   'Chemistry': [
-    { key: 'aniongap', label: 'Anion Gap (mEq/L)', min: 5, max: 30 },
-    { key: 'bicarbonate', label: 'Bicarbonate (mEq/L)', min: 10, max: 35 },
-    { key: 'bun', label: 'BUN (mg/dL)', min: 10, max: 120 },
-    { key: 'calcium', label: 'Calcium (mg/dL)', min: 6, max: 12 },
-    { key: 'chloride', label: 'Chloride (mEq/L)', min: 90, max: 115 },
-    { key: 'glucose', label: 'Glucose (mg/dL)', min: 60, max: 400 },
-    { key: 'sodium', label: 'Sodium (mEq/L)', min: 125, max: 155 },
-    { key: 'potassium', label: 'Potassium (mEq/L)', min: 2.5, max: 7 },
-    { key: 'lactate', label: 'Lactate (mmol/L)', min: 0.5, max: 10 },
+    { key: 'aniongap', label: 'Anion Gap (mEq/L)', min: 5, max: 30, step:1 },
+    { key: 'bicarbonate', label: 'Bicarbonate (mEq/L)', min: 10, max: 35, step: 1 },
+    { key: 'bun', label: 'BUN (mg/dL)', min: 10, max: 120, step: 1 },
+    { key: 'calcium', label: 'Calcium (mg/dL)', min: 6, max: 12, step: 0.1 },
+    { key: 'chloride', label: 'Chloride (mEq/L)', min: 90, max: 115, step: 1 },
+    { key: 'glucose', label: 'Glucose (mg/dL)', min: 60, max: 400, step: 1 },
+    { key: 'sodium', label: 'Sodium (mEq/L)', min: 125, max: 155, step: 1 },
+    { key: 'potassium', label: 'Potassium (mEq/L)', min: 2.5, max: 7, step: 0.1 },
+    { key: 'lactate', label: 'Lactate (mmol/L)', min: 0.5, max: 10, step: 0.1 },
     { key: 'ph', label: 'pH', min: 6.8, max: 7.8, step: 0.01 },
-    { key: 'pco2', label: 'pCO₂ (mmHg)', min: 20, max: 80 },
-    { key: 'magnesium', label: 'Magnesium (mg/dL)', min: 1, max: 4 },
-    { key: 'ldh', label: 'LDH (U/L)', min: 100, max: 1000 }
+    { key: 'pco2', label: 'pCO₂ (mmHg)', min: 20, max: 80, step: 1 },
+    { key: 'magnesium', label: 'Magnesium (mg/dL)', min: 1, max: 4, step: 0.1 },
+    { key: 'ldh', label: 'LDH (U/L)', min: 100, max: 1000, step: 10 }
   ],
   'Temporal Features': [
     { key: 'high_pressure', label: 'High Pressure Alert', min: 0, max: 1 },
@@ -116,15 +114,16 @@ const FEATURE_GROUPS = {
     { key: 'is_night_shift', label: 'Is Night Shift (0/1)', min: 0, max: 1 }
   ],
   'Change Features': [
-    { key: 'platelet_change', label: 'Platelet Change', min: -200, max: 200 },
-    { key: 'ptt_change', label: 'PTT Change (seconds)', min: -50, max: 50 },
+    { key: 'platelet_change', label: 'Platelet Change', min: -200, max: 200, step: 1 },
+    { key: 'ptt_change', label: 'PTT Change (seconds)', min: -50, max: 50, step: 1 },
     { key: 'creatinine_change', label: 'Creatinine Change (mg/dL)', min: -3, max: 3, step: 0.1 },
-    { key: 'hematocrit_change', label: 'Hematocrit Change (%)', min: -15, max: 15 }
+    { key: 'hematocrit_change', label: 'Hematocrit Change (%)', min: -15, max: 15, step: 1 }
   ]
 }
 
 function FullModelPage() {
   const [features, setFeatures] = useState(DEFAULT_VALUES)
+  const [anticoagulationMode, setAnticoagulationMode] = useState('heparin') // 'heparin', 'citrate', or 'none'
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -143,10 +142,22 @@ function FullModelPage() {
     e.preventDefault()
     
     const top10Keys = FEATURE_GROUPS['Top 10 Most Important (Required)'].map(f => f.key)
-    const missingTop10 = top10Keys.filter(key => features[key] === '' || features[key] === null)
+    // Remove heparin_dose and citrate from required check since they're conditional
+    const requiredKeys = top10Keys.filter(key => key !== 'heparin_dose' && key !== 'citrate')
+    const missingTop10 = requiredKeys.filter(key => features[key] === '' || features[key] === null)
+    
+    // Check conditional required fields based on mode
+    if (anticoagulationMode === 'heparin' && (!features.heparin_dose || features.heparin_dose === '')) {
+      setError('Heparin dose is required when Heparin mode is selected')
+      return
+    }
+    if (anticoagulationMode === 'citrate' && (!features.citrate || features.citrate === '')) {
+      setError('Citrate is required when Citrate mode is selected')
+      return
+    }
     
     if (missingTop10.length > 0) {
-      setError('Please fill in all Top 10 required features')
+      setError('Please fill in all required features')
       return
     }
     
@@ -155,7 +166,32 @@ function FullModelPage() {
     setRecommendations(null)
     
     try {
-      const response = await predictFull(features)
+      // Build payload with correct mode flags and conditional values
+      const payload = { ...features }
+      
+      // Set mode flags based on selected anticoagulation mode
+      if (anticoagulationMode === 'heparin') {
+        payload.mode_heparin = 1
+        payload.mode_citrate = 0
+        payload.mode_none = 0
+        // Keep heparin_dose, set citrate to null
+        payload.citrate = null
+      } else if (anticoagulationMode === 'citrate') {
+        payload.mode_heparin = 0
+        payload.mode_citrate = 1
+        payload.mode_none = 0
+        // Keep citrate, set heparin_dose to null
+        payload.heparin_dose = null
+      } else { // 'none'
+        payload.mode_heparin = 0
+        payload.mode_citrate = 0
+        payload.mode_none = 1
+        // Set both to null
+        payload.heparin_dose = null
+        payload.citrate = null
+      }
+      
+      const response = await predictFull(payload)
       setResult(response)
       
       // Generate LLM recommendations
@@ -178,9 +214,22 @@ function FullModelPage() {
 
   const handleReset = () => {
     setFeatures(DEFAULT_VALUES)
+    setAnticoagulationMode('heparin')
     setResult(null)
     setError(null)
     setRecommendations(null)
+  }
+  
+  const handleModeChange = (mode) => {
+    setAnticoagulationMode(mode)
+    // Clear the irrelevant dose when switching modes
+    if (mode === 'heparin') {
+      setFeatures(prev => ({ ...prev, citrate: null }))
+    } else if (mode === 'citrate') {
+      setFeatures(prev => ({ ...prev, heparin_dose: null }))
+    } else { // 'none'
+      setFeatures(prev => ({ ...prev, heparin_dose: null, citrate: null }))
+    }
   }
 
   const toggleGroup = (groupName) => {
@@ -200,7 +249,7 @@ function FullModelPage() {
           </h2>
           <p className="text-gray-600 max-w-3xl mx-auto">
             Complete clinical assessment using all available parameters. Top 10 features are <strong>required</strong>, 
-            while others are pre-filled with typical ICU values and can be adjusted as needed.
+            while others are pre-filled with mean ICU values and can be adjusted as needed.
           </p>
         </div>
         
@@ -208,6 +257,87 @@ function FullModelPage() {
           {/* Input Form */}
           <div className="lg:col-span-2 space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Anticoagulation Mode Selector */}
+              <div className="card hover-lift animate-slide-in-right mb-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Anticoagulation Mode <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="anticoagulationMode"
+                        value="none"
+                        checked={anticoagulationMode === 'none'}
+                        onChange={(e) => handleModeChange(e.target.value)}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">None</span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="anticoagulationMode"
+                        value="heparin"
+                        checked={anticoagulationMode === 'heparin'}
+                        onChange={(e) => handleModeChange(e.target.value)}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Heparin</span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="anticoagulationMode"
+                        value="citrate"
+                        checked={anticoagulationMode === 'citrate'}
+                        onChange={(e) => handleModeChange(e.target.value)}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Citrate</span>
+                    </label>
+                  </div>
+                </div>
+                
+                {/* Conditional Anticoagulation Dose Inputs */}
+                {anticoagulationMode === 'heparin' && (
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Heparin Dose (units/hr) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={2000}
+                      value={features.heparin_dose || ''}
+                      onChange={(e) => handleInputChange('heparin_dose', e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                )}
+
+                {anticoagulationMode === 'citrate' && (
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Citrate (mEq/hr) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={300}
+                      value={features.citrate || ''}
+                      onChange={(e) => handleInputChange('citrate', e.target.value)}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+
               {Object.entries(FEATURE_GROUPS).map(([groupName, groupFeatures]) => {
                 const isRequired = groupName.includes('Top 10')
                 const isCollapsed = collapsedGroups[groupName]
@@ -238,7 +368,9 @@ function FullModelPage() {
                     
                     {!isCollapsed && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-in">
-                        {groupFeatures.map(({ key, label, min, max, step }) => (
+                        {groupFeatures
+                          .filter(({ key }) => key !== 'heparin_dose' && key !== 'citrate')
+                          .map(({ key, label, min, max, step }) => (
                           <div key={key}>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
                               {label}
@@ -317,7 +449,7 @@ function FullModelPage() {
             <div className="results-panel">
               <div className="card animate-slide-in">
                 <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-                  <img src="/crrt_icon.png" alt="CRRT Icon" className="w-8 h-8 object-contain" />
+                  <img src="/risk_icon.png" alt="Risk Icon" className="w-8 h-8 object-contain" />
                   <span>Risk Assessment</span>
                 </h3>
                 

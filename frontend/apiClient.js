@@ -33,6 +33,18 @@ export const predictTop10 = async (features) => {
   }
 };
 
+export const predictTop20 = async (features) => {
+  try {
+    const response = await api.post('/api/predict/top20', {
+      features
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Prediction error:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to get prediction');
+  }
+};
+
 export const healthCheck = async () => {
   try {
     const response = await api.get('/health');
