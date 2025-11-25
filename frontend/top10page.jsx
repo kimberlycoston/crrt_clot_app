@@ -15,13 +15,13 @@ const TOP20_FEATURES = [
   { key: 'prefilter_replacement_rate', label: 'Prefilter Replacement (mL/hr)', unit: 'mL/hr', min: 0, max: 1500, step: 100, info: 'Pre-dilution rate' },
   { key: 'creatinine', label: 'Creatinine (mg/dL)', unit: 'mg/dL', min: 0.5, max: 8, step: 0.1, info: 'Renal function marker' },
   { key: 'return_pressure', label: 'Return Pressure (mmHg)', unit: 'mmHg', min: 50, max: 250, step: 10, info: 'Return pressure' },
-  { key: 'effluent_bloodflow_ratio', label: 'Effluent/Blood Flow Ratio', unit: '', min: 0, max: 1, step: 0.01, info: 'Effluent/Blood Flow Ratio' },
+  { key: 'effluent_bloodflow_ratio', label: 'Effluent/Blood Flow Ratio', unit: 'ratio', min: 0, max: 1, step: 0.01, info: 'Effluent/Blood Flow Ratio' },
   { key: 'dialysate_rate', label: 'Dialysate Rate (mL/hr)', unit: 'mL/hr', min: 500, max: 3000, step: 100, info: 'Dialysate rate' },
   { key: 'replacement_rate', label: 'Replacement Rate (mL/hr)', unit: 'mL/hr', min: 0, max: 2000, step: 100, info: 'Total replacement fluid' },
   { key: 'postfilter_replacement_rate', label: 'Postfilter Replacement (mL/hr)', unit: 'mL/hr', min: 0, max: 1000, step: 100, info: 'Post-dilution rate' },
   { key: 'creatinine_change', label: 'Creatinine Change (mg/dL)', unit: 'mg/dL', min: -3, max: 3, step: 0.1, info: 'Creatinine change' },
   { key: 'ptt', label: 'PTT (seconds)', unit: 'seconds', min: 20, max: 100, step: 1, info: 'Partial thromboplastin time' },
-  { key: 'platelet_wbc_ratio', label: 'Platelet/WBC Ratio', unit: '', min: 0, max: 1, step: 0.01, info: 'Platelet/WBC Ratio' },
+  { key: 'platelet_wbc_ratio', label: 'Platelet/WBC Ratio', unit: 'ratio', min: 0, max: 1, step: 0.01, info: 'Platelet/WBC Ratio' },
   { key: 'ldh', label: 'LDH (U/L)', unit: 'U/L', min: 100, max: 1000, step: 10, info: 'Lactate dehydrogenase level' }
 ]
 
@@ -36,7 +36,7 @@ const DEFAULT_VALUES = {
   creatinine: 2.5,
   citrate: 200,
   return_pressure: 150,
-  effluent_bloodflow_ratio: 0.375,
+  effluent_bloodflow_ratio: 0.37,
   dialysate_rate: 1500,
   replacement_rate: 700,
   postfilter_replacement_rate: 200,
