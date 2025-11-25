@@ -85,84 +85,47 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
     )
     .join('\n');
 
-  // Assess anticoagulation status
-  const citrate = features.citrate || 0;
-  const heparin = features.heparin_dose || 0;
-  const ptt = features.ptt || 0;
-  const inr = features.inr || 0;
   
   const anticoagStatus = assessAnticoagulationStatus(features);
 
-  return `PATIENT RISK ASSESSMENT:
-- Clot Formation Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()} RISK)
-- Anticoagulation Status: ${anticoagStatus}
+  
+  return `You are an expert nephrologist specializing in CRRT (Continuous Renal Replacement Therapy) in the ICU. You are reviewing a machine learning-based CRRT clot risk prediction to provide clinical guidance on adjusting modifiable risk factors for clotting.
 
-KEY FACTORS INCREASING CLOT RISK:
+PATIENT DATA:
+- Predicted Clot Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()})
+- Anticoagulation: ${anticoagStatus}
+
+RISK FACTORS (from SHAP analysis):
+Increasing risk:
 ${increasingFactorsText || 'None identified'}
 
-KEY FACTORS DECREASING CLOT RISK:
+Decreasing risk:
 ${decreasingFactorsText || 'None identified'}
 
-CRITICAL CLINICAL CONSIDERATIONS:
-1. Risk Level Context:
-   - LOW risk (<25%): Use conservative interventions. Patient is already well-managed.
-   - MODERATE risk (25-50%): Standard interventions appropriate.
-   - HIGH risk (>50%): More aggressive interventions may be needed.
+CLINICAL RULES:
+1. ONLY recommend changes to modifiable CRRT parameters and risk factors
+2. If anticoagulation status says "OVER-ANTICOAGULATED" or mentions bleeding risk, do NOT recommend increasing anticoagulation
+3. Match intervention intensity to risk level:
+   - LOW (<30%): Maintenance only, acknowledge good control
+   - MODERATE (30-60%): Targeted adjustments to top risk factors
+   - HIGH (>60%): More aggressive but still safe interventions
 
-2. Anticoagulation Balance:
-   - If PTT >45 or INR >1.5 or citrate >200 or heparin >1000: Patient may be OVER-ANTICOAGULATED
-   - NEVER recommend increasing anticoagulation if patient is already over-anticoagulated
-   - Consider DECREASING anticoagulation if bleeding risk indicators present
-   - Balance clot prevention with bleeding risk
+Generate 2-4 recommendations if necessary. Respond with ONLY valid JSON, no markdown:
 
-3. Pressure Management:
-   - High filter pressure (>200 mmHg) increases clot risk
-   - Low pressures may indicate over-anticoagulation or under-filtration
-   - Consider the clinical context
-
-INSTRUCTIONS:
-Generate 2-4 clinically appropriate, actionable recommendations.
-
-FOR LOW RISK PATIENTS (<25%):
-- Acknowledge patient is well-managed
-- Suggest MAINTENANCE or minor optimizations only
-- Do NOT recommend aggressive interventions
-- Focus on monitoring and sustaining current good outcomes
-
-FOR MODERATE/HIGH RISK:
-- Focus on modifiable parameters with highest positive SHAP values
-- Prioritize safe, evidence-based interventions
-- Consider the anticoagulation status before recommending changes
-
-MODIFIABLE PARAMETERS:
-- Blood flow rate adjustments
-- Anticoagulation (citrate, heparin) optimization - BUT RESPECT ANTICOAGULATION STATUS
-- Replacement/dialysate rate modifications
-- Filter pressure management
-
-NEVER RECOMMEND:
-- Increasing anticoagulation if patient is over-anticoagulated
-- Changes to lab values that cannot be directly controlled (phosphate, fibrinogen, creatinine)
-- Aggressive interventions for LOW risk patients
-
-REQUIRED JSON FORMAT - respond ONLY with valid JSON, no markdown:
 {
-  "summary": "One sentence clinical overview considering risk level and anticoagulation status",
+  "summary": "Brief clinical interpretation in one sentence",
   "recommendations": [
     {
       "priority": 1,
-      "parameter": "Filter Pressure",
-      "currentValue": "200 mmHg",
-      "recommendedAction": "Monitor and maintain current levels",
-      "rationale": "Brief clinical explanation considering context",
-      "targetingFactor": "filter_pressure"
+      "parameter": "Parameter name",
+      "currentValue": "Current value with units",
+      "recommendedAction": "Specific action to take",
+      "rationale": "Why this helps reduce clot risk",
+      "targetingFactor": "feature_name_from_shap"
     }
   ]
+}`;
 }
-
-Each recommendation must be clinically appropriate given the risk level and anticoagulation status. For LOW risk patients, focus on maintenance rather than aggressive changes.`;
-}
-
 /**
  * Assess anticoagulation status based on available parameters
  */
