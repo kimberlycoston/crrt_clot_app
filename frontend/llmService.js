@@ -1,10 +1,8 @@
 /**
- * LLM Service for generating clinical recommendations using OpenAI
+ * LLM Service for generating clinical recommendations using backend API
  */
 
-// Configuration: Check if running in production with API key
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || null;
-const IS_PRODUCTION = !!OPENAI_API_KEY;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
  * Generate clinical recommendations based on prediction results
@@ -19,50 +17,25 @@ export async function generateClinicalRecommendations(predictionResult, features
   const prompt = buildClinicalPrompt(percentage, risk_level, top_contributors, features);
   
   try {
-    // Check if API key is available
-    if (!OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is not configured. Please add VITE_OPENAI_API_KEY to your .env file.");
-    }
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call YOUR backend endpoint instead of OpenAI directly
+    const response = await fetch(`${API_BASE_URL}/api/generate`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a nephrology critical care assistant providing evidence-based guidance for CRRT management. Always respond with valid JSON only, no additional text."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-        response_format: { type: "json_object" }
+        prompt: prompt
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("OpenAI API Error:", errorData);
-      
-      if (response.status === 401) {
-        throw new Error("Invalid OpenAI API key. Please check your .env file.");
-      }
-      if (response.status === 429) {
-        throw new Error("OpenAI API rate limit exceeded. Please try again later.");
-      }
-      throw new Error(`OpenAI API request failed: ${response.status}`);
+      console.error("Backend API Error:", errorData);
+      throw new Error(`Backend API request failed: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.response;
     
     // Parse the JSON response
     try {
@@ -194,72 +167,72 @@ Each recommendation must be clinically appropriate given the risk level and anti
  * Assess anticoagulation status based on available parameters
  */
 function assessAnticoagulationStatus(citrate, heparin, ptt, inr) {
-    // Determine which anticoagulation method is being used
-    const usingCitrate = citrate > 50; // Threshold for active citrate use
-    const usingHeparin = heparin > 100; // Threshold for active heparin use
-    
-    // Flag if both are being used (unusual/dangerous)
-    if (usingCitrate && usingHeparin) {
-      return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
-    }
-    
-    const issues = [];
-    
-    // Assess based on which method is being used
-    if (usingCitrate) {
-      // Citrate anticoagulation assessment
-      if (citrate > 250) {
-        issues.push(`Very high citrate (${citrate} mEq/hr)`);
-      } else if (citrate > 200) {
-        issues.push(`High citrate (${citrate} mEq/hr)`);
-      }
-      
-      // PTT/INR less relevant with citrate, but still check
-      if (ptt > 50) issues.push(`PTT elevated (${ptt}s)`);
-      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
-      
-      if (issues.length >= 2) {
-        return `OVER-ANTICOAGULATED (Citrate) - ${issues.join(', ')}. BLEEDING RISK.`;
-      } else if (issues.length === 1) {
-        return `Possible over-anticoagulation (Citrate) - ${issues[0]}`;
-      } else if (citrate < 150) {
-        return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
-      } else {
-        return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
-      }
-    } else if (usingHeparin) {
-      // Heparin anticoagulation assessment
-      if (heparin > 1200) {
-        issues.push(`Very high heparin (${heparin} units/hr)`);
-      } else if (heparin > 1000) {
-        issues.push(`High heparin (${heparin} units/hr)`);
-      }
-      
-      // PTT is key for heparin monitoring
-      if (ptt > 80) {
-        issues.push(`PTT critically elevated (${ptt}s)`);
-      } else if (ptt > 60) {
-        issues.push(`PTT elevated (${ptt}s)`);
-      }
-      
-      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
-      
-      if (issues.length >= 2) {
-        return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
-      } else if (issues.length === 1) {
-        return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
-      } else if (ptt < 30 && heparin < 500) {
-        return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
-      } else if (ptt >= 45 && ptt <= 60) {
-        return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
-      } else {
-        return `Heparin anticoagulation - monitor PTT (current: ${ptt}s)`;
-      }
-    } else {
-      // No anticoagulation or very minimal
-      return `Minimal/no anticoagulation detected (Citrate: ${citrate}, Heparin: ${heparin})`;
-    }
+  // Determine which anticoagulation method is being used
+  const usingCitrate = citrate > 50; // Threshold for active citrate use
+  const usingHeparin = heparin > 100; // Threshold for active heparin use
+  
+  // Flag if both are being used (unusual/dangerous)
+  if (usingCitrate && usingHeparin) {
+    return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
   }
+  
+  const issues = [];
+  
+  // Assess based on which method is being used
+  if (usingCitrate) {
+    // Citrate anticoagulation assessment
+    if (citrate > 250) {
+      issues.push(`Very high citrate (${citrate} mEq/hr)`);
+    } else if (citrate > 200) {
+      issues.push(`High citrate (${citrate} mEq/hr)`);
+    }
+    
+    // PTT/INR less relevant with citrate, but still check
+    if (ptt > 50) issues.push(`PTT elevated (${ptt}s)`);
+    if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+    
+    if (issues.length >= 2) {
+      return `OVER-ANTICOAGULATED (Citrate) - ${issues.join(', ')}. BLEEDING RISK.`;
+    } else if (issues.length === 1) {
+      return `Possible over-anticoagulation (Citrate) - ${issues[0]}`;
+    } else if (citrate < 150) {
+      return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
+    } else {
+      return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
+    }
+  } else if (usingHeparin) {
+    // Heparin anticoagulation assessment
+    if (heparin > 1200) {
+      issues.push(`Very high heparin (${heparin} units/hr)`);
+    } else if (heparin > 1000) {
+      issues.push(`High heparin (${heparin} units/hr)`);
+    }
+    
+    // PTT is key for heparin monitoring
+    if (ptt > 80) {
+      issues.push(`PTT critically elevated (${ptt}s)`);
+    } else if (ptt > 60) {
+      issues.push(`PTT elevated (${ptt}s)`);
+    }
+    
+    if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+    
+    if (issues.length >= 2) {
+      return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
+    } else if (issues.length === 1) {
+      return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
+    } else if (ptt < 30 && heparin < 500) {
+      return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
+    } else if (ptt >= 45 && ptt <= 60) {
+      return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
+    } else {
+      return `Heparin anticoagulation - monitor PTT (current: ${ptt}s)`;
+    }
+  } else {
+    // No anticoagulation or very minimal
+    return `Minimal/no anticoagulation detected (Citrate: ${citrate}, Heparin: ${heparin})`;
+  }
+}
 
 /**
  * Format feature names for better readability
@@ -282,15 +255,9 @@ function formatFeatureName(feature) {
 }
 
 /**
- * Check if API is properly configured
+ * Check if backend API is reachable
  */
 export function checkApiConfiguration() {
-  if (!OPENAI_API_KEY) {
-    console.warn("⚠️ OpenAI API key not found!");
-    console.warn("Please set VITE_OPENAI_API_KEY in your .env file");
-    return false;
-  }
-  
-  console.log("✅ OpenAI API key configured");
+  console.log(`✅ Backend API configured at: ${API_BASE_URL}`);
   return true;
 }
