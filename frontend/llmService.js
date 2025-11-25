@@ -140,16 +140,17 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
   CLINICAL RULES:
   1. PRIORITIZE recommendations that target the top "Factors INCREASING clot risk" - these have the highest SHAP values and are driving the clot risk UP
   2. Each recommendation should directly address one of the listed risk-increasing factors when possible
-  3. ONLY recommend changes to modifiable CRRT parameters (not lab values like fibrinogen or creatinine)
-  4. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
+  3. Do not recommend changes to Low Risk patients (less than 35% risk)
+  4. ONLY recommend changes to modifiable CRRT parameters (not lab values like fibrinogen or creatinine)
+  5. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
      - If patient is on heparin: adjust dose based on PTT (target 60-90s)
      - If patient is on citrate: adjust citrate dose only
-  5. Match intervention intensity to risk level:
-     - LOW (<35%): Maintenance only, acknowledge good control
+  6. Match intervention intensity to risk level:
+     - LOW (<35%): Maintenance only, acknowledge good control and do not recommend changes to any parameters
      - MODERATE (35-65%): Targeted adjustments to top 2-3 risk factors
      - HIGH (>65%): More aggressive interventions on multiple risk factors
   
-  Generate 2-4 recommendations. Each recommendation MUST target a specific factor from the "Factors INCREASING clot risk" list. Respond with ONLY valid JSON, no markdown:
+  Generate 2-4 recommendations for moderate and high risk patients. Each recommendation MUST target a specific factor from the "Factors INCREASING clot risk" list. Respond with ONLY valid JSON, no markdown:
   
   {
     "summary": "Brief clinical interpretation in one sentence",

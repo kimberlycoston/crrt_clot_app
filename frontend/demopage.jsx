@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { predictFull } from './apiClient.js'
+import { predictTop20 } from './apiClient.js'
 import { HYPOTHETICAL_PATIENTS } from './patients.js'
 import RiskGauge from './riskgauge.jsx'
+import ShapBidirectionalChart from './ShapBidirectionalChart.jsx'
 import ClinicalRecommendations from './ClinicalRecommendations.jsx'
 import { generateClinicalRecommendations } from './llmService.js'
 import { Brain, Loader2 } from 'lucide-react'
@@ -74,7 +75,7 @@ function DemoPage() {
         }
       })
       
-      const response = await predictFull(payload)
+      const response = await predictTop20(payload)
       setResult(response)
       
       // Generate LLM recommendations
@@ -99,7 +100,7 @@ function DemoPage() {
     <div className="px-4 py-6">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-900 mb-6">
-          Full Model - 57 Features
+          Demo Scenarios
         </h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -119,14 +120,12 @@ function DemoPage() {
                   }`}
                 >
                   <div className="font-semibold capitalize">
-                    {key === 'veryHigh' ? 'Very High Risk' : key.replace(/([A-Z])/g, ' $1').trim()}
+                    {key.charAt(0).toUpperCase() + key.slice(1)} Risk
                   </div>
                   <div className="text-sm text-gray-600 mt-1">
-                    {key === 'bleeding' && 'Over-anticoagulated'}
-                    {key === 'low' && 'Stable patient'}
-                    {key === 'moderate' && 'Mild inflammation'}
-                    {key === 'high' && 'Rising pressures'}
-                    {key === 'veryHigh' && 'Critical state'}
+                    {key === 'low' && 'Stable patient, good anticoagulation'}
+                    {key === 'moderate' && 'Some concerning factors'}
+                    {key === 'high' && 'Multiple high-risk factors'}
                   </div>
                 </button>
               ))}
@@ -186,23 +185,6 @@ function DemoPage() {
                     </div>
                   ) : null}
                 </div>
-                
-                <div className="mt-6">
-                  <h4 className="font-semibold mb-2">Top 10 Contributors:</h4>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {Object.entries(result.top_contributors || {})
-                      .map(([feature, value]) => (
-                        <div key={feature} className="flex justify-between text-sm py-1 border-b border-gray-100">
-                          <span className="text-gray-700">
-                            {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                          <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {value > 0 ? '+' : ''}{value.toFixed(4)}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
               </div>
             ) : (
               <div className="text-gray-500 text-center py-12">
@@ -211,6 +193,31 @@ function DemoPage() {
             )}
           </div>
         </div>
+
+        {/* SHAP Chart - Full Width Below */}
+        {result && (
+          <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+            <h4 className="font-bold text-2xl mb-2 flex items-center justify-center space-x-2">
+              <span>Key Risk Factors</span>
+            </h4>
+            <div className="max-w-4xl mx-auto">
+              <ShapBidirectionalChart 
+                shapValues={Object.fromEntries(
+                  Object.entries(result.top_contributors || {}).filter(
+                    ([key]) => !['mode_none', 'mode_heparin', 'mode_citrate'].includes(key)
+                  )
+                )}
+                maxDisplay={10}
+              />
+            </div>
+            <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg text-xs text-gray-700 border border-blue-100 max-w-2xl mx-auto">
+              <p className="font-semibold mb-1">Understanding SHAP Values</p>
+              <p><strong>SHAP values</strong> show how much each feature pushes the prediction away from the baseline. 
+              Features extending <span className="text-red-600 font-semibold">right (red)</span> increase clot risk, 
+              while features extending <span className="text-green-600 font-semibold">left (green)</span> decrease it.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
