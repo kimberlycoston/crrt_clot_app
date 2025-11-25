@@ -91,7 +91,7 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
   const ptt = features.ptt || 0;
   const inr = features.inr || 0;
   
-  const anticoagStatus = assessAnticoagulationStatus(citrate, heparin, ptt, inr);
+  const anticoagStatus = assessAnticoagulationStatus(features);
 
   return `PATIENT RISK ASSESSMENT:
 - Clot Formation Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()} RISK)
@@ -166,73 +166,74 @@ Each recommendation must be clinically appropriate given the risk level and anti
 /**
  * Assess anticoagulation status based on available parameters
  */
-function assessAnticoagulationStatus(citrate, heparin, ptt, inr) {
-  // Determine which anticoagulation method is being used
-  const usingCitrate = citrate > 50; // Threshold for active citrate use
-  const usingHeparin = heparin > 100; // Threshold for active heparin use
-  
-  // Flag if both are being used (unusual/dangerous)
-  if (usingCitrate && usingHeparin) {
-    return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
-  }
-  
-  const issues = [];
-  
-  // Assess based on which method is being used
-  if (usingCitrate) {
-    // Citrate anticoagulation assessment
-    if (citrate > 250) {
-      issues.push(`Very high citrate (${citrate} mEq/hr)`);
-    } else if (citrate > 200) {
-      issues.push(`High citrate (${citrate} mEq/hr)`);
+function assessAnticoagulationStatus(features) {
+    const citrate = features.citrate || 0;
+    const heparin = features.heparin_dose || 0;
+    const ptt = features.ptt || 0;
+    const inr = features.inr || 0;
+    
+    // Check mode flags FIRST (most reliable indicator)
+    const modeHeparin = features.mode_heparin === 1;
+    const modeCitrate = features.mode_citrate === 1;
+    const modeNone = features.mode_none === 1;
+    
+    // Use mode flags if available
+    if (modeNone) {
+      return `No anticoagulation (regional or systemic)`;
     }
     
-    // PTT/INR less relevant with citrate, but still check
-    if (ptt > 50) issues.push(`PTT elevated (${ptt}s)`);
-    if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+    if (modeCitrate && !modeHeparin) {
+      // Citrate mode
+      if (citrate > 250) {
+        return `OVER-ANTICOAGULATED (Citrate) - Very high citrate (${citrate} mEq/hr). BLEEDING RISK.`;
+      } else if (citrate > 200) {
+        return `High citrate anticoagulation (${citrate} mEq/hr) - monitor for citrate toxicity`;
+      } else if (citrate < 150) {
+        return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
+      } else {
+        return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
+      }
+    }
     
-    if (issues.length >= 2) {
-      return `OVER-ANTICOAGULATED (Citrate) - ${issues.join(', ')}. BLEEDING RISK.`;
-    } else if (issues.length === 1) {
-      return `Possible over-anticoagulation (Citrate) - ${issues[0]}`;
-    } else if (citrate < 150) {
-      return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
+    if (modeHeparin && !modeCitrate) {
+      // Heparin mode
+      const issues = [];
+      
+      if (heparin > 1200) issues.push(`Very high heparin (${heparin} units/hr)`);
+      else if (heparin > 1000) issues.push(`High heparin (${heparin} units/hr)`);
+      
+      if (ptt > 80) issues.push(`PTT critically elevated (${ptt}s)`);
+      else if (ptt > 60) issues.push(`PTT elevated (${ptt}s)`);
+      
+      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
+      
+      if (issues.length >= 2) {
+        return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
+      } else if (issues.length === 1) {
+        return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
+      } else if (ptt < 30 && heparin < 500) {
+        return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
+      } else if (ptt >= 45 && ptt <= 60) {
+        return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
+      } else {
+        return `Heparin anticoagulation (${heparin} units/hr, PTT: ${ptt}s)`;
+      }
+    }
+    
+    // Fallback: no mode flags, infer from values
+    const usingCitrate = citrate > 50;
+    const usingHeparin = heparin > 100;
+    
+    if (usingCitrate && usingHeparin) {
+      return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
+    } else if (usingCitrate) {
+      return `Citrate anticoagulation (${citrate} mEq/hr)`;
+    } else if (usingHeparin) {
+      return `Heparin anticoagulation (${heparin} units/hr, PTT: ${ptt}s)`;
     } else {
-      return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
+      return `Minimal/no anticoagulation detected`;
     }
-  } else if (usingHeparin) {
-    // Heparin anticoagulation assessment
-    if (heparin > 1200) {
-      issues.push(`Very high heparin (${heparin} units/hr)`);
-    } else if (heparin > 1000) {
-      issues.push(`High heparin (${heparin} units/hr)`);
-    }
-    
-    // PTT is key for heparin monitoring
-    if (ptt > 80) {
-      issues.push(`PTT critically elevated (${ptt}s)`);
-    } else if (ptt > 60) {
-      issues.push(`PTT elevated (${ptt}s)`);
-    }
-    
-    if (inr > 1.8) issues.push(`INR elevated (${inr})`);
-    
-    if (issues.length >= 2) {
-      return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
-    } else if (issues.length === 1) {
-      return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
-    } else if (ptt < 30 && heparin < 500) {
-      return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
-    } else if (ptt >= 45 && ptt <= 60) {
-      return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
-    } else {
-      return `Heparin anticoagulation - monitor PTT (current: ${ptt}s)`;
-    }
-  } else {
-    // No anticoagulation or very minimal
-    return `Minimal/no anticoagulation detected (Citrate: ${citrate}, Heparin: ${heparin})`;
   }
-}
 
 /**
  * Format feature names for better readability
