@@ -107,11 +107,11 @@ const FEATURE_GROUPS = {
     { key: 'ldh', label: 'LDH (U/L)', min: 100, max: 1000, step: 10 }
   ],
   'Temporal Features': [
-    { key: 'high_pressure', label: 'High Pressure Alert', min: 0, max: 1 },
-    { key: 'hour_of_day', label: 'Hour of Day (0-23)', min: 0, max: 23 },
-    { key: 'day_of_week', label: 'Day of Week (0-6)', min: 0, max: 6 },
-    { key: 'is_weekend', label: 'Is Weekend (0/1)', min: 0, max: 1 },
-    { key: 'is_night_shift', label: 'Is Night Shift (0/1)', min: 0, max: 1 }
+    { key: 'high_pressure', label: 'High Pressure Alert', min: 0, max: 1, step: 1 },
+    { key: 'hour_of_day', label: 'Hour of Day (0-23)', min: 0, max: 23, step: 1 },
+    { key: 'day_of_week', label: 'Day of Week (0-6)', min: 0, max: 6, step: 1 },
+    { key: 'is_weekend', label: 'Is Weekend (0/1)', min: 0, max: 1, step: 1 },
+    { key: 'is_night_shift', label: 'Is Night Shift (0/1)', min: 0, max: 1, step: 1 }
   ],
   'Change Features': [
     { key: 'platelet_change', label: 'Platelet Change', min: -200, max: 200, step: 1 },
@@ -263,8 +263,8 @@ function FullModelPage() {
             Full Model - All 57 Features
           </h2>
           <p className="text-gray-600 max-w-3xl mx-auto">
-            Complete clinical assessment using all available parameters. Top 10 features are <strong>required</strong>, 
-            while others are pre-filled with mean ICU values and can be adjusted as needed.
+            Complete clinical assessment using all available parameters. Top 10 features are <strong>required</strong>. 
+            All values are pre-filled with mean ICU values and can be adjusted as needed.
           </p>
         </div>
         
@@ -550,7 +550,7 @@ function FullModelPage() {
                 ) : (
                   <div className="text-center py-16">
                     <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-slow" style={{ backgroundColor: 'transparent' }}>
-                    <img src="/crrt_icon.png" alt="CRRT Icon" className="w-20 h-20 object-contain" />
+                    <img src="/analyze_icon.png" alt="Analyze Icon" className="w-20 h-20 object-contain" />
                     </div>
                     <p className="text-gray-500 mb-2 font-medium">Ready for Full Assessment</p>
                     <p className="text-sm text-gray-400 max-w-xs mx-auto">

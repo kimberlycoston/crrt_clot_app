@@ -37,7 +37,7 @@ function App() {
                   <span className={`w-2 h-2 rounded-full ${
                     currentPage === 'top10' ? 'bg-blue-500' : 'bg-gray-400'
                   }`}></span>
-                  <span>Quick Input</span>
+                  <span>Quick Calc</span>
                 </span>
               </button>
               <button

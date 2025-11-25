@@ -125,7 +125,7 @@ function Top10Page() {
       // Generate LLM recommendations
       setLoadingRecommendations(true)
       try {
-        const llmResponse = await generateClinicalRecommendations(response, features)
+        const llmResponse = await generateClinicalRecommendations(response, payload)
         setRecommendations(llmResponse)
       } catch (llmError) {
         console.error("LLM recommendation error:", llmError)
@@ -176,7 +176,7 @@ function Top10Page() {
             Quick Clot Risk Calculator
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-          Quick evaluation of circuit clotting risk based on key treatment parameters.
+          Quick evaluation of circuit clotting risk based on key risk factors
           </p>
         </div>
         
@@ -451,10 +451,14 @@ function Top10Page() {
               <span>Key Risk Factors</span>
             </h4>
             <div className="max-w-4xl mx-auto">
-              <ShapBidirectionalChart 
-                shapValues={result.top_contributors || {}}
-                maxDisplay={20}
-              />
+            <ShapBidirectionalChart 
+              shapValues={Object.fromEntries(
+                Object.entries(result.top_contributors || {}).filter(
+                  ([key]) => !['mode_none', 'mode_heparin', 'mode_citrate'].includes(key)
+                )
+              )}
+              maxDisplay={20}
+            />
             </div>
             <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg text-xs text-gray-700 border border-blue-100 max-w-2xl mx-auto">
               <p className="font-semibold mb-1">Understanding SHAP Values</p>

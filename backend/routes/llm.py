@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from openai import OpenAI
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 router = APIRouter()
 
 class LLMRequest(BaseModel):

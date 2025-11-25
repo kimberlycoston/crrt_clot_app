@@ -55,11 +55,41 @@ export async function generateClinicalRecommendations(predictionResult, features
  * Build the clinical prompt for the LLM
  */
 function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
+  // Determine which anticoagulation mode is active
+  const modeHeparin = features.mode_heparin === 1;
+  const modeCitrate = features.mode_citrate === 1;
+  const modeNone = features.mode_none === 1;
+  
+  // Filter out the irrelevant anticoagulant from top contributors
+  // This prevents the LLM from thinking both are being used
+  const filteredContributors = { ...topContributors };
+  
+  if (modeHeparin) {
+    // Patient is on heparin - remove citrate from factors
+    delete filteredContributors.citrate;
+    delete filteredContributors.mode_citrate;
+  } else if (modeCitrate) {
+    // Patient is on citrate - remove heparin from factors
+    delete filteredContributors.heparin_dose;
+    delete filteredContributors.mode_heparin;
+  } else if (modeNone) {
+    // No anticoagulation - remove both
+    delete filteredContributors.citrate;
+    delete filteredContributors.heparin_dose;
+    delete filteredContributors.mode_citrate;
+    delete filteredContributors.mode_heparin;
+  }
+  
+  // Remove mode flags from display - they confuse the LLM
+  delete filteredContributors.mode_heparin;
+  delete filteredContributors.mode_citrate;
+  delete filteredContributors.mode_none;
+
   // Separate positive (increasing risk) and negative (decreasing risk) factors
   const riskIncreasing = [];
   const riskDecreasing = [];
   
-  Object.entries(topContributors).forEach(([feature, shapValue]) => {
+  Object.entries(filteredContributors).forEach(([feature, shapValue]) => {
     const actualValue = features[feature];
     if (shapValue > 0) {
       riskIncreasing.push({ feature, shapValue, value: actualValue });
@@ -89,47 +119,51 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
 
   return `You are an expert nephrologist specializing in CRRT (Continuous Renal Replacement Therapy) in the ICU. You are reviewing a machine learning-based CRRT clot risk prediction to provide clinical guidance on adjusting modifiable risk factors for clotting.
 
-PATIENT DATA:
-- Predicted Clot Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()})
-- Anticoagulation: ${anticoagStatus}
-
-RISK FACTORS (from SHAP analysis):
-Increasing risk:
-${increasingFactorsText || 'None identified'}
-
-Decreasing risk:
-${decreasingFactorsText || 'None identified'}
-
-REFERENCE RANGES:
-- PTT: 60-90s is therapeutic for heparin (below 60s = subtherapeutic, above 90s = over-anticoagulated)
-
-CLINICAL RULES:
-1. Use your clinical judgment to determine the best course of action based on the patient's data
-2. ONLY recommend changes to modifiable CRRT parameters and risk factors
-3. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
-   - If patient is on citrate: adjust citrate dose, do not add heparin
-   - If patient is on heparin: adjust heparin dose based on PTT (target 60-90s), do not add citrate
-   - Switching anticoagulation (e.g., heparin → citrate) may be considered if current regimen is inadequate despite optimization
-4. Match intervention intensity to risk level:
-   - LOW (<35%): Maintenance only, acknowledge good control
-   - MODERATE (35-65%): Targeted adjustments to top risk factors
-   - HIGH (>65%): More aggressive but still safe interventions
-
-Generate 2-4 recommendations. Respond with ONLY valid JSON, no markdown:
-
-{
-  "summary": "Brief clinical interpretation in one sentence",
-  "recommendations": [
-    {
-      "priority": 1,
-      "parameter": "Parameter name",
-      "currentValue": "Current value with units",
-      "recommendedAction": "Specific action to take",
-      "rationale": "Why this helps reduce clot risk",
-      "targetingFactor": "feature_name_from_shap"
-    }
-  ]
-}`;
+  PATIENT DATA:
+  - Predicted Clot Risk: ${percentage.toFixed(1)}% (${riskLevel.toUpperCase()})
+  - Anticoagulation: ${anticoagStatus}
+  
+  RISK FACTORS (from SHAP analysis, listed in order of impact):
+  Factors INCREASING clot risk (address these first):
+  ${increasingFactorsText || 'None identified'}
+  
+  Factors DECREASING clot risk (these are protective):
+  ${decreasingFactorsText || 'None identified'}
+  
+  REFERENCE RANGES:
+  - PTT: 60-90s is therapeutic for heparin (below 60s = subtherapeutic, above 90s = over-anticoagulated)
+  - Heparin dose: 500-1000 units/hr typical range
+  - Citrate: 150-200 mEq/hr typical range
+  - Blood flow: 150-250 mL/min typical
+  - Filter pressure: <200 mmHg preferred (>250 mmHg = high clot risk)
+  
+  CLINICAL RULES:
+  1. PRIORITIZE recommendations that target the top "Factors INCREASING clot risk" - these have the highest SHAP values and are driving the clot risk UP
+  2. Each recommendation should directly address one of the listed risk-increasing factors when possible
+  3. ONLY recommend changes to modifiable CRRT parameters (not lab values like fibrinogen or creatinine)
+  4. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
+     - If patient is on heparin: adjust dose based on PTT (target 60-90s)
+     - If patient is on citrate: adjust citrate dose only
+  5. Match intervention intensity to risk level:
+     - LOW (<35%): Maintenance only, acknowledge good control
+     - MODERATE (35-65%): Targeted adjustments to top 2-3 risk factors
+     - HIGH (>65%): More aggressive interventions on multiple risk factors
+  
+  Generate 2-4 recommendations. Each recommendation MUST target a specific factor from the "Factors INCREASING clot risk" list. Respond with ONLY valid JSON, no markdown:
+  
+  {
+    "summary": "Brief clinical interpretation in one sentence",
+    "recommendations": [
+      {
+        "priority": 1,
+        "parameter": "Parameter name",
+        "currentValue": "Current value with units",
+        "recommendedAction": "Specific action to take",
+        "rationale": "Why this helps reduce clot risk",
+        "targetingFactor": "feature_name_from_shap"
+      }
+    ]
+  }`;
 }
 
 /**
