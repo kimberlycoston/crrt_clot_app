@@ -30,13 +30,57 @@ function DemoPage() {
     
     try {
       const patientData = HYPOTHETICAL_PATIENTS[selectedPatient]
-      const response = await predictFull(patientData)
+      
+      // Clean and transform the patient data
+      const payload = {}
+      
+      // Determine anticoagulation mode from patient data
+      const hasCitrate = patientData.citrate && patientData.citrate > 0
+      const hasHeparin = patientData.heparin_dose && patientData.heparin_dose > 0
+      
+      if (hasCitrate && !hasHeparin) {
+        payload.mode_heparin = 0
+        payload.mode_citrate = 1
+        payload.mode_none = 0
+        payload.citrate = parseFloat(patientData.citrate) || 0
+        payload.heparin_dose = 0
+      } else if (hasHeparin && !hasCitrate) {
+        payload.mode_heparin = 1
+        payload.mode_citrate = 0
+        payload.mode_none = 0
+        payload.heparin_dose = parseFloat(patientData.heparin_dose) || 0
+        payload.citrate = 0
+      } else {
+        // Neither or both - default to none
+        payload.mode_heparin = 0
+        payload.mode_citrate = 0
+        payload.mode_none = 1
+        payload.heparin_dose = 0
+        payload.citrate = 0
+      }
+      
+      // Add all other features, converting null/undefined/empty to 0
+      Object.keys(patientData).forEach(key => {
+        // Skip mode flags and anticoagulation values (already handled above)
+        if (['mode_heparin', 'mode_citrate', 'mode_none', 'heparin_dose', 'citrate'].includes(key)) {
+          return
+        }
+        
+        const value = patientData[key]
+        if (value === '' || value === null || value === undefined) {
+          payload[key] = 0
+        } else {
+          payload[key] = typeof value === 'number' ? value : parseFloat(value) || 0
+        }
+      })
+      
+      const response = await predictFull(payload)
       setResult(response)
       
       // Generate LLM recommendations
       setLoadingRecommendations(true)
       try {
-        const llmResponse = await generateClinicalRecommendations(response, patientData)
+        const llmResponse = await generateClinicalRecommendations(response, payload)
         setRecommendations(llmResponse)
       } catch (llmError) {
         console.error("LLM recommendation error:", llmError)

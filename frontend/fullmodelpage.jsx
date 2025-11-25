@@ -142,7 +142,6 @@ function FullModelPage() {
     e.preventDefault()
     
     const top10Keys = FEATURE_GROUPS['Top 10 Most Important (Required)'].map(f => f.key)
-    // Remove heparin_dose and citrate from required check since they're conditional
     const requiredKeys = top10Keys.filter(key => key !== 'heparin_dose' && key !== 'citrate')
     const missingTop10 = requiredKeys.filter(key => features[key] === '' || features[key] === null)
     
@@ -166,38 +165,53 @@ function FullModelPage() {
     setRecommendations(null)
     
     try {
-      // Build payload with correct mode flags and conditional values
-      const payload = { ...features }
+      // Build payload - clean all values (convert null/undefined/empty to 0)
+      const payload = {}
       
       // Set mode flags based on selected anticoagulation mode
       if (anticoagulationMode === 'heparin') {
         payload.mode_heparin = 1
         payload.mode_citrate = 0
         payload.mode_none = 0
-        // Keep heparin_dose, set citrate to null
-        payload.citrate = null
+        payload.heparin_dose = features.heparin_dose ? parseFloat(features.heparin_dose) || 0 : 0
+        payload.citrate = 0  // Set to 0, not null!
       } else if (anticoagulationMode === 'citrate') {
         payload.mode_heparin = 0
         payload.mode_citrate = 1
         payload.mode_none = 0
-        // Keep citrate, set heparin_dose to null
-        payload.heparin_dose = null
+        payload.citrate = features.citrate ? parseFloat(features.citrate) || 0 : 0
+        payload.heparin_dose = 0  // Set to 0, not null!
       } else { // 'none'
         payload.mode_heparin = 0
         payload.mode_citrate = 0
         payload.mode_none = 1
-        // Set both to null
-        payload.heparin_dose = null
-        payload.citrate = null
+        payload.heparin_dose = 0
+        payload.citrate = 0
       }
       
+      // Add all other features, converting null/undefined/empty to 0
+      Object.keys(features).forEach(key => {
+        // Skip mode flags and anticoagulation values (already handled above)
+        if (['mode_heparin', 'mode_citrate', 'mode_none', 'heparin_dose', 'citrate'].includes(key)) {
+          return
+        }
+        
+        const value = features[key]
+        if (value === '' || value === null || value === undefined) {
+          payload[key] = 0
+        } else {
+          payload[key] = typeof value === 'number' ? value : parseFloat(value) || 0
+        }
+      })
+      
+      // Get prediction from backend
       const response = await predictFull(payload)
       setResult(response)
       
       // Generate LLM recommendations
       setLoadingRecommendations(true)
       try {
-        const llmResponse = await generateClinicalRecommendations(response, features)
+        const llmResponse = await generateClinicalRecommendations(response, payload)
         setRecommendations(llmResponse)
       } catch (llmError) {
         console.error("LLM recommendation error:", llmError)
@@ -205,6 +219,7 @@ function FullModelPage() {
       } finally {
         setLoadingRecommendations(false)
       }
+      
     } catch (err) {
       setError(err.message || 'Failed to get prediction')
     } finally {
