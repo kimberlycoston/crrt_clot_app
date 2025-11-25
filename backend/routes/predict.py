@@ -1,4 +1,4 @@
- """
+"""
 API routes for predictions
 """
 from fastapi import APIRouter, HTTPException
