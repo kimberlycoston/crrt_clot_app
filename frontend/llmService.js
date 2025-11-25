@@ -17,7 +17,7 @@ export async function generateClinicalRecommendations(predictionResult, features
   const prompt = buildClinicalPrompt(percentage, risk_level, top_contributors, features);
   
   try {
-    // Call YOUR backend endpoint instead of OpenAI directly
+    // Call backend endpoint
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
       method: "POST",
       headers: {
@@ -75,20 +75,18 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
   // Build feature descriptions
   const increasingFactorsText = riskIncreasing
     .map(({ feature, shapValue, value }) => 
-      `- ${formatFeatureName(feature)}: ${value} (SHAP impact: +${shapValue.toFixed(3)})`
+      `- ${formatFeatureName(feature)}: ${value} (SHAP: +${shapValue.toFixed(3)})`
     )
     .join('\n');
 
   const decreasingFactorsText = riskDecreasing
     .map(({ feature, shapValue, value }) => 
-      `- ${formatFeatureName(feature)}: ${value} (SHAP impact: ${shapValue.toFixed(3)})`
+      `- ${formatFeatureName(feature)}: ${value} (SHAP: ${shapValue.toFixed(3)})`
     )
     .join('\n');
 
-  
   const anticoagStatus = assessAnticoagulationStatus(features);
 
-  
   return `You are an expert nephrologist specializing in CRRT (Continuous Renal Replacement Therapy) in the ICU. You are reviewing a machine learning-based CRRT clot risk prediction to provide clinical guidance on adjusting modifiable risk factors for clotting.
 
 PATIENT DATA:
@@ -102,19 +100,22 @@ ${increasingFactorsText || 'None identified'}
 Decreasing risk:
 ${decreasingFactorsText || 'None identified'}
 
+REFERENCE RANGES:
+- PTT: 60-90s is therapeutic for heparin (below 60s = subtherapeutic, above 90s = over-anticoagulated)
+
 CLINICAL RULES:
 1. Use your clinical judgment to determine the best course of action based on the patient's data
 2. ONLY recommend changes to modifiable CRRT parameters and risk factors
 3. ANTICOAGULATION: Patients use EITHER citrate OR heparin, NEVER both simultaneously
    - If patient is on citrate: adjust citrate dose, do not add heparin
-   - If patient is on heparin: adjust heparin dose based on PTT (target 45-60s), do not add citrate
-   - Switching anticoagulation (e.g., heparin → citrate) may be considered if current regimen is inadequate despite optimization (e.g., high clot risk despite very high heparin dosing)
+   - If patient is on heparin: adjust heparin dose based on PTT (target 60-90s), do not add citrate
+   - Switching anticoagulation (e.g., heparin → citrate) may be considered if current regimen is inadequate despite optimization
 4. Match intervention intensity to risk level:
-   - LOW (<30%): Maintenance only, acknowledge good control
-   - MODERATE (30-60%): Targeted adjustments to top risk factors
-   - HIGH (>60%): More aggressive but still safe interventions
+   - LOW (<35%): Maintenance only, acknowledge good control
+   - MODERATE (35-65%): Targeted adjustments to top risk factors
+   - HIGH (>65%): More aggressive but still safe interventions
 
-Generate 2-4 recommendations if necessary. Respond with ONLY valid JSON, no markdown:
+Generate 2-4 recommendations. Respond with ONLY valid JSON, no markdown:
 
 {
   "summary": "Brief clinical interpretation in one sentence",
@@ -130,77 +131,41 @@ Generate 2-4 recommendations if necessary. Respond with ONLY valid JSON, no mark
   ]
 }`;
 }
+
 /**
  * Assess anticoagulation status based on available parameters
  */
 function assessAnticoagulationStatus(features) {
-    const citrate = features.citrate || 0;
-    const heparin = features.heparin_dose || 0;
-    const ptt = features.ptt || 0;
-    const inr = features.inr || 0;
-    
-    // Check mode flags FIRST (most reliable indicator)
-    const modeHeparin = features.mode_heparin === 1;
-    const modeCitrate = features.mode_citrate === 1;
-    const modeNone = features.mode_none === 1;
-    
-    // Use mode flags if available
-    if (modeNone) {
-      return `No anticoagulation (regional or systemic)`;
-    }
-    
-    if (modeCitrate && !modeHeparin) {
-      // Citrate mode
-      if (citrate > 250) {
-        return `OVER-ANTICOAGULATED (Citrate) - Very high citrate (${citrate} mEq/hr). BLEEDING RISK.`;
-      } else if (citrate > 200) {
-        return `High citrate anticoagulation (${citrate} mEq/hr) - monitor for citrate toxicity`;
-      } else if (citrate < 150) {
-        return `Citrate anticoagulation - may be subtherapeutic (${citrate} mEq/hr)`;
-      } else {
-        return `Citrate anticoagulation - therapeutic range (${citrate} mEq/hr)`;
-      }
-    }
-    
-    if (modeHeparin && !modeCitrate) {
-      // Heparin mode
-      const issues = [];
-      
-      if (heparin > 1200) issues.push(`Very high heparin (${heparin} units/hr)`);
-      else if (heparin > 1000) issues.push(`High heparin (${heparin} units/hr)`);
-      
-      if (ptt > 80) issues.push(`PTT critically elevated (${ptt}s)`);
-      else if (ptt > 60) issues.push(`PTT elevated (${ptt}s)`);
-      
-      if (inr > 1.8) issues.push(`INR elevated (${inr})`);
-      
-      if (issues.length >= 2) {
-        return `OVER-ANTICOAGULATED (Heparin) - ${issues.join(', ')}. BLEEDING RISK.`;
-      } else if (issues.length === 1) {
-        return `Possible over-anticoagulation (Heparin) - ${issues[0]}`;
-      } else if (ptt < 30 && heparin < 500) {
-        return `Heparin anticoagulation - likely subtherapeutic (PTT: ${ptt}s, Heparin: ${heparin} units/hr)`;
-      } else if (ptt >= 45 && ptt <= 60) {
-        return `Heparin anticoagulation - therapeutic range (PTT: ${ptt}s)`;
-      } else {
-        return `Heparin anticoagulation (${heparin} units/hr, PTT: ${ptt}s)`;
-      }
-    }
-    
-    // Fallback: no mode flags, infer from values
-    const usingCitrate = citrate > 50;
-    const usingHeparin = heparin > 100;
-    
-    if (usingCitrate && usingHeparin) {
-      return `WARNING: Both citrate (${citrate}) and heparin (${heparin}) detected - unusual dual anticoagulation`;
-    } else if (usingCitrate) {
-      return `Citrate anticoagulation (${citrate} mEq/hr)`;
-    } else if (usingHeparin) {
-      return `Heparin anticoagulation (${heparin} units/hr, PTT: ${ptt}s)`;
-    } else {
-      return `Minimal/no anticoagulation detected`;
-    }
+  const citrate = features.citrate || 0;
+  const heparin = features.heparin_dose || 0;
+  const ptt = features.ptt || 0;
+  
+  // Check mode flags
+  const modeHeparin = features.mode_heparin === 1;
+  const modeCitrate = features.mode_citrate === 1;
+  const modeNone = features.mode_none === 1;
+  
+  if (modeNone) {
+    return `None`;
   }
+  
+  if (modeCitrate) {
+    return `Citrate (${citrate} mEq/hr)`;
+  }
+  
+  if (modeHeparin) {
+    return `Heparin (${heparin} units/hr, PTT: ${ptt}s)`;
+  }
+  
+  // Fallback if no mode flags
+  if (citrate > 50) {
+    return `Citrate (${citrate} mEq/hr)`;
+  } else if (heparin > 100) {
+    return `Heparin (${heparin} units/hr, PTT: ${ptt}s)`;
+  } else {
+    return `None detected`;
+  }
+}
 
 /**
  * Format feature names for better readability
@@ -216,7 +181,18 @@ function formatFeatureName(feature) {
     'filter_pressure': 'Filter Pressure',
     'prefilter_replacement_rate': 'Prefilter Replacement Rate',
     'creatinine': 'Creatinine',
-    'replacement_rate': 'Total Replacement Rate'
+    'replacement_rate': 'Total Replacement Rate',
+    'return_pressure': 'Return Pressure',
+    'effluent_bloodflow_ratio': 'Effluent/Blood Flow Ratio',
+    'dialysate_rate': 'Dialysate Rate',
+    'postfilter_replacement_rate': 'Postfilter Replacement Rate',
+    'ptt': 'PTT',
+    'platelet_wbc_ratio': 'Platelet/WBC Ratio',
+    'ldh': 'LDH',
+    'mode_none': 'No Anticoagulation Mode',
+    'mode_heparin': 'Heparin Mode',
+    'mode_citrate': 'Citrate Mode',
+    'creatinine_change': 'Creatinine Change'
   };
   
   return nameMap[feature] || feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
