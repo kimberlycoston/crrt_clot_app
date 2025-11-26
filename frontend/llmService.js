@@ -131,11 +131,7 @@ function buildClinicalPrompt(percentage, riskLevel, topContributors, features) {
   ${decreasingFactorsText || 'None identified'}
   
   REFERENCE RANGES:
-  - PTT: 60-90s is therapeutic for heparin (below 60s = subtherapeutic, above 90s = over-anticoagulated)
-  - Heparin dose: 500-1000 units/hr typical range
-  - Citrate: 150-200 mEq/hr typical range
-  - Blood flow: 150-250 mL/min typical
-  - Filter pressure: <200 mmHg preferred (>250 mmHg = high clot risk)
+  - PTT: 60-90s is typical therapeutic range for heparinized patients
   
   CLINICAL RULES:
   1. PRIORITIZE recommendations that target the top "Factors INCREASING clot risk" - these have the highest SHAP values and are driving the clot risk UP
